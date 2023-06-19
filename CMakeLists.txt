@@ -3,4 +3,11 @@ project(ADRIFT C)
 
 set(CMAKE_C_STANDARD 23)
 
-add_executable(ADRIFT main.c)
+set(SRC_DIR src)
+
+include_directories(${SRC_DIR})
+
+add_executable(ADRIFT
+    ${SRC_DIR}/main.c
+    ${SRC_DIR}/cli/parse.c
+)
