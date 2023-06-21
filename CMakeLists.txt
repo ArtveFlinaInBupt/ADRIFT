@@ -10,4 +10,5 @@ include_directories(${SRC_DIR})
 add_executable(ADRIFT
     ${SRC_DIR}/main.c
     ${SRC_DIR}/cli/parse.c
+    ${SRC_DIR}/external/getopt.c
 )

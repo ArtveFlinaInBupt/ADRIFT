@@ -10,21 +10,20 @@
 #elif defined(__linux__)
 #  include <getopt.h>
 #else
-#  error "Unsupported platform (only Unix-like supported yet)"
+#  include "external/getopt.h"
 #endif
 
 void print_usage(char *name) {
-  // clang-format off
-  printf(BOLD UNDERLINE "Usage:" RESET " " BOLD "%s" RESET " [OPTIONS]\n", name);
+  printf(
+      BOLD UNDERLINE "Usage:" RESET " " BOLD "%s" RESET " [OPTIONS]\n", name
+  );
   printf("\n");
   printf(BOLD UNDERLINE "Options:\n" RESET);
-  // TODO: modify after write getopt
-  printf("  " BOLD "-d" RESET ", " BOLD "--debug-level" RESET " <LEVEL>\tSet debug level\n");
-  printf("  " BOLD "-f" RESET ", " BOLD "--config-file" RESET " <FILENAME>\tSet config file\n");
-  printf("  " BOLD "-h" RESET ", " BOLD "--help" RESET "\t\t\tPrint usage\n");
-  printf("  " BOLD "-s" RESET ", " BOLD "--server" RESET " <IP>\t\tSet dns server\n");
-  printf("  " BOLD "-v" RESET ", " BOLD "--version" RESET "\t\t\tPrint version info\n");
-  // clang-format on
+  printf("  " BOLD "-d" RESET " <LEVEL>\t\tSet debug level\n");
+  printf("  " BOLD "-f" RESET " <FILENAME>\t\tSet config file\n");
+  printf("  " BOLD "-h" RESET "\t\t\tPrint usage\n");
+  printf("  " BOLD "-s" RESET " <IP>\t\tSet DNS server\n");
+  printf("  " BOLD "-v" RESET "\t\t\tPrint version info\n");
 }
 
 void print_version() {
