@@ -8,6 +8,7 @@
 typedef struct {
   const char *dns_server;
   const char *config_file;
+  const char *log_file;
   i32 debug_level;
   i8 help;
   i8 version;
@@ -15,9 +16,9 @@ typedef struct {
 
 void print_usage(char *name);
 
-void print_version();
+void print_version(void);
 
-Arguments default_arguments();
+Arguments default_arguments(void);
 
 Arguments parse_arguments(int argc, char **argv);
 

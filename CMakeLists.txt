@@ -11,4 +11,6 @@ add_executable(ADRIFT
     ${SRC_DIR}/main.c
     ${SRC_DIR}/cli/parse.c
     ${SRC_DIR}/external/getopt.c
+    ${SRC_DIR}/util/log.c
+    ${SRC_DIR}/util/time.c
 )

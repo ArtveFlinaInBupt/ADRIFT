@@ -3,15 +3,18 @@
 #ifndef ADRIFT_UTIL_CONSTANT_H
 #  define ADRIFT_UTIL_CONSTANT_H
 
-const char *const ADRIFT_VERSION = "0.0.1";
-const char *const ADRIFT_NAME = "adrift";
+#define ADRIFT_VERSION "0.0.1"
+#define ADRIFT_NAME "adrift"
 
-const char *DEFAULT_CONFIG_FILE = "./dnsrelay.txt";
-const char *DEFAULT_DNS_SERVER = "192.168.0.1";
-const i32 DEFAULT_DEBUG_LEVEL = 0;
+#define DEFAULT_CONFIG_FILE "./dnsrelay.txt"
+#define DEFAULT_DNS_SERVER "192.168.0.1"
+#define DEFAULT_DEBUG_LEVEL 0
 
 #define BOLD "\033[1m"
 #define UNDERLINE "\033[4m"
+#define RED "\033[31m"
+#define GREEN "\033[32m"
+#define GREY "\033[90m"
 #define RESET "\033[0m"
 
 #endif // ADRIFT_UTIL_CONSTANT_H

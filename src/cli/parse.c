@@ -1,6 +1,7 @@
 #include "parse.h"
 
 #include "util/constant.h"
+#include "util/log.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -19,35 +20,38 @@ void print_usage(char *name) {
   );
   printf("\n");
   printf(BOLD UNDERLINE "Options:\n" RESET);
-  printf("  " BOLD "-d" RESET " <LEVEL>\t\tSet debug level\n");
+  printf("  " BOLD "-d" RESET
+         " <LEVEL>\t\tSet debug level [possible values: " UNDERLINE "0" RESET
+         ", 1, 2]\n");
   printf("  " BOLD "-f" RESET " <FILENAME>\t\tSet config file\n");
   printf("  " BOLD "-h" RESET "\t\t\tPrint usage\n");
+  printf("  " BOLD "-l" RESET " <FILENAME>\t\tSet log file\n");
   printf("  " BOLD "-s" RESET " <IP>\t\tSet DNS server\n");
   printf("  " BOLD "-v" RESET "\t\t\tPrint version info\n");
 }
 
-void print_version() {
+void print_version(void) {
   printf(BOLD "%s %s" RESET "\n", ADRIFT_NAME, ADRIFT_VERSION);
 }
 
-Arguments default_arguments() {
+Arguments default_arguments(void) {
   Arguments args;
   args.config_file = DEFAULT_CONFIG_FILE;
   args.debug_level = DEFAULT_DEBUG_LEVEL;
   args.dns_server = DEFAULT_DNS_SERVER;
+  args.log_file = NULL;
   args.help = 0;
   args.version = 0;
   return args;
 }
 
 Arguments parse_arguments(int argc, char **argv) {
-  // TODO: gen by copilot, neither completed nor tested, just for demo
   Arguments args = default_arguments();
 
-  for (int opt; (opt = getopt(argc, argv, "d:f:hs:v")) != -1;) {
+  for (int opt; (opt = getopt(argc, argv, "d:f:hl:.s:v")) != -1;) {
     switch (opt) {
       case 'd':
-        args.debug_level = atoi(optarg);
+        args.debug_level = (i32)strtol(optarg, NULL, 10);
         if (args.debug_level < 0 || args.debug_level >= 3) {
           fprintf(stderr, "Invalid debug level: %d\n", args.debug_level);
           exit(EXIT_FAILURE);
@@ -58,6 +62,9 @@ Arguments parse_arguments(int argc, char **argv) {
         break;
       case 'h':
         args.help = 1;
+        break;
+      case 'l':
+        args.log_file = optarg;
         break;
       case 's':
         args.dns_server = optarg;
@@ -75,9 +82,14 @@ Arguments parse_arguments(int argc, char **argv) {
 }
 
 void dump_arguments(Arguments *args) {
-  fprintf(stderr, "Arguments:\n");
-  fprintf(stderr, "  config_file: %s\n", args->config_file);
-  fprintf(stderr, "  debug_level: %d\n", args->debug_level);
-  fprintf(stderr, "  dns_server: %s\n", args->dns_server);
-  fprintf(stderr, "  version: %d\n", args->version);
+  debug(1, "Arguments:");
+  debug(1, "  config_file: %s", args->config_file);
+  debug(1, "  debug_level: %d", args->debug_level);
+  debug(1, "  dns_server: %s", args->dns_server);
+  if (args->log_file == NULL)
+    debug(1, "  log_file: (null)");
+  else
+    debug(1, "  log_file: %s", args->log_file);
+  debug(1, "  help: %d", args->help);
+  debug(1, "  version: %d", args->version);
 }
