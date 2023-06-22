@@ -41,7 +41,14 @@ void destroy_log_file(void) {
     fclose(log_file_ptr);
 }
 
-void debug(int level, const char *format, ...) {
+/// @brief Print debug message.
+/// @param level Debug level.
+/// @param format Format string.
+/// @param ... Arguments.
+/// @note If the debug level is greater than the current debug level, the
+/// message will not be printed.
+/// @example debug(1, "Hello, %s", "world");
+void debug(int level, const char * restrict format, ...) {
   if (level > debug_level)
     return;
 
@@ -51,21 +58,27 @@ void debug(int level, const char *format, ...) {
   vsnprintf(buf, 512, format, args);
   va_end(args);
 
-  char time_buf[16 | 1];
-  get_current_time_format(time_buf); // HH:MM:SS
+  char time_buf[8 | 1];
+  get_current_time_format(time_buf);
 
   output_log(GREY "[%s] [DEBUG] %s" RESET "\n", time_buf, buf);
 }
 
-void print_log(Success success, const char *format, ...) {
+/// @brief Print log message.
+/// @param success Success or failure.
+/// @param format Format string.
+/// @param ... Arguments.
+/// @example print_log(SUCCESS, "Hello, %s", "world");
+/// @example print_log(FAILURE, "Goodbye, %s", "world");
+void print_log(Success success, const char * restrict format, ...) {
   char buf[512 | 1];
   va_list args;
   va_start(args, format);
   vsnprintf(buf, 512, format, args);
   va_end(args);
 
-  char time_buf[16 | 1];
-  get_current_time_format(time_buf); // HH:MM:SS
+  char time_buf[8 | 1];
+  get_current_time_format(time_buf);
 
   switch (success) {
     case FAILURE:
@@ -76,9 +89,3 @@ void print_log(Success success, const char *format, ...) {
       break;
   }
 }
-
-// void output_log(const char *buf) {
-//   fprintf(stderr, "%s", buf);
-//   if (log_file_ptr != NULL)
-//     fprintf(log_file_ptr, "%s", buf);
-// }
