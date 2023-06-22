@@ -11,8 +11,9 @@
 #define DEFAULT_DEBUG_LEVEL 0
 
 #define PORT 53
-#define IPV4_ADDR_BUF_SIZE (3 * 4 + 3 + 1) // 16, equals to INET_ADDRSTRLEN
-#define IPV4_ADDR_STR_SIZE (128 | 1)
+#define IPV4_ADDR_BUF_SIZE 16 // equals to INET_ADDRSTRLEN
+#define IPV6_ADDR_BUF_SIZE 46 // equals to INET6_ADDRSTRLEN
+#define URL_BUF_SIZE (128 | 1)
 
 #define FNV_OFFSET_BASIS 0xcbf29ce484222325
 #define FNV_PRIME 0x100000001b3
