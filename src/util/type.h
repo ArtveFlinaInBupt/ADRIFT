@@ -3,7 +3,8 @@
 #ifndef ADRIFT_UTIL_TYPE_H
 #  define ADRIFT_UTIL_TYPE_H
 
-#include <stdint.h>
+#  include <stddef.h>
+#  include <stdint.h>
 
 typedef uint8_t u8;
 typedef uint16_t u16;

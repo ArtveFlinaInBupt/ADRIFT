@@ -23,7 +23,7 @@ void print_usage(char *name) {
   printf("  " BOLD "-d" RESET
          " <LEVEL>\t\tSet debug level [possible values: " UNDERLINE "0" RESET
          ", 1, 2]\n");
-  printf("  " BOLD "-f" RESET " <FILENAME>\t\tSet config file\n");
+  printf("  " BOLD "-f" RESET " <FILENAME>\t\tSet hosts file\n");
   printf("  " BOLD "-h" RESET "\t\t\tPrint usage\n");
   printf("  " BOLD "-l" RESET " <FILENAME>\t\tSet log file\n");
   printf("  " BOLD "-s" RESET " <IP>\t\tSet DNS server\n");
@@ -36,7 +36,7 @@ void print_version(void) {
 
 Arguments default_arguments(void) {
   Arguments args;
-  args.config_file = DEFAULT_CONFIG_FILE;
+  args.hosts_file = DEFAULT_HOSTS_FILE;
   args.debug_level = DEFAULT_DEBUG_LEVEL;
   args.dns_server = DEFAULT_DNS_SERVER;
   args.log_file = NULL;
@@ -58,7 +58,7 @@ Arguments parse_arguments(int argc, char **argv) {
         }
         break;
       case 'f':
-        args.config_file = optarg;
+        args.hosts_file = optarg;
         break;
       case 'h':
         args.help = 1;
@@ -83,7 +83,7 @@ Arguments parse_arguments(int argc, char **argv) {
 
 void dump_arguments(Arguments *args) {
   debug(1, "Arguments:");
-  debug(1, "  config_file: %s", args->config_file);
+  debug(1, "  hosts_file: %s", args->hosts_file);
   debug(1, "  debug_level: %d", args->debug_level);
   debug(1, "  dns_server: %s", args->dns_server);
   if (args->log_file == NULL)

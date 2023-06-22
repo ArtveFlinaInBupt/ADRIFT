@@ -5,6 +5,14 @@
 
 #  include "util/type.h"
 
-void get_current_time_format(char *buf);
+#include <sys/time.h>
+
+static inline void get_current_time_format(char *buf) {
+  struct timeval tv;
+  struct tm *tm;
+  gettimeofday(&tv, NULL);
+  tm = localtime(&tv.tv_sec);
+  strftime(buf, 16, "%H:%M:%S", tm);
+}
 
 #endif // ADRIFT_UTIL_TIME_H

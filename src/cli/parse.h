@@ -7,7 +7,7 @@
 
 typedef struct {
   const char *dns_server;
-  const char *config_file;
+  const char *hosts_file;
   const char *log_file;
   i32 debug_level;
   i8 help;
