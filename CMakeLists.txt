@@ -14,4 +14,5 @@ add_executable(ADRIFT
     ${SRC_DIR}/ds/trie.h
     ${SRC_DIR}/ds/hash.h
     ${SRC_DIR}/ds/hash_map.h
+    ${SRC_DIR}/protocol/protocol.c
 )
