@@ -13,7 +13,7 @@
 
 #define BUFF_LEN 1024
 #define SERVER_PORT 53
-#define MAP_LEN 0x0fffffff
+#define MAP_LEN 65535
 
 
 // 获取一个udp请求,如果是来自客户端的请求,则进行解析,得到请求的网址
