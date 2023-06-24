@@ -32,14 +32,15 @@ void parse_qname(u8 **buf, u8 **output) {
   (*buf)++;
 }
 
-void parse_header(uint8_t **buf, DnsHeader *header) {
-  memcpy(header, *buf, sizeof(DnsHeader));
+uint8_t* parse_header(uint8_t *buf, DnsHeader *header) {
+  memcpy(header, buf, sizeof(DnsHeader));
   header->id = ntohs(header->id);
   header->qdcount = ntohs(header->qdcount);
   header->ancount = ntohs(header->ancount);
   header->nscount = ntohs(header->nscount);
   header->arcount = ntohs(header->arcount);
   *buf += sizeof(DnsHeader);
+  return buf + sizeof(DnsHeader);
 }
 
 void parse_question(uint8_t **buf, DnsQuestion *question) {

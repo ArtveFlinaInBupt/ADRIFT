@@ -52,4 +52,8 @@ size_t get_qname_length(const u8 *buf);
 /// @details The output buffer must be freed by the caller.
 void parse_qname(u8 **buf, u8 **output);
 
+void parse_question(uint8_t **buf, DnsQuestion *question);
+
+uint8_t* parse_header(uint8_t *buf, DnsHeader *header);
+
 #endif // ADRIFT_PROTOCOL_H
