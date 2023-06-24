@@ -43,6 +43,16 @@ uint8_t* parse_header(uint8_t *buf, DnsHeader *header) {
   return buf + sizeof(DnsHeader);
 }
 
+uint8_t* dump_header(uint8_t *buf, DnsHeader header) {
+  header.id = htons(header.id);
+  header.qdcount = htons(header.qdcount);
+  header.ancount = htons(header.ancount);
+  header.nscount = htons(header.nscount);
+  header.arcount = htons(header.arcount);
+  memcpy(buf, &header, sizeof(DnsHeader));
+  return buf + sizeof(DnsHeader);
+}
+
 void parse_question(uint8_t **buf, DnsQuestion *question) {
     parse_qname(buf, &question->qname);
     memcpy(&question->qtype, *buf, 2);
