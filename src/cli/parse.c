@@ -36,9 +36,9 @@ void print_version(void) {
 
 Arguments default_arguments(void) {
   Arguments args;
-  args.hosts_file = DEFAULT_HOSTS_FILE;
+  args.hosts_file = NULL;
   args.debug_level = DEFAULT_DEBUG_LEVEL;
-  args.dns_server = DEFAULT_DNS_SERVER;
+  args.dns_server = NULL;
   args.log_file = NULL;
   args.help = 0;
   args.version = 0;

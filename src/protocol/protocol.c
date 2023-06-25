@@ -28,11 +28,11 @@ void parse_qname(u8 **buf, u8 **output) {
     }
     *p++ = '.';
   }
-  *(p - 1) = '\0';
+  *p = '\0';
   (*buf)++;
 }
 
-void dump_qname(u8 **buf, u8 *qname) {
+void dump_name(u8 **buf, u8 *qname) {
   u8 *p = *buf;
   u8 *q = qname;
   while (*qname != '\0') {
@@ -51,6 +51,11 @@ void dump_qname(u8 **buf, u8 *qname) {
   }
   *p++ = '\0';
   *buf = p;
+}
+
+void dump_rdata(u8 **buf, u8 *rdata, u16 rdlength) {
+  memcpy(*buf, rdata, rdlength);
+  *buf += rdlength;
 }
 
 void parse_header(u8 **buf, DnsHeader *header) {
@@ -74,6 +79,7 @@ void dump_header(u8 **buf, DnsHeader header) {
 }
 
 void parse_question(u8 **buf, DnsQuestion *question) {
+
   parse_qname(buf, &question->qname);
   memcpy(&question->qtype, *buf, 2);
   question->qtype = ntohs(question->qtype);
@@ -84,7 +90,7 @@ void parse_question(u8 **buf, DnsQuestion *question) {
 }
 
 void dump_question(u8 **buf, DnsQuestion *question) {
-  dump_qname(buf, question->qname);
+  dump_name(buf, question->qname);
   question->qtype = htons(question->qtype);
   memcpy(*buf, &question->qtype, 2);
   *buf += 2;
@@ -97,8 +103,15 @@ void destroy_question(DnsQuestion *question) {
   free(question->qname);
 }
 
-void parse_resource_record(u8 **buf, DnsResourceRecord *record) {
-  parse_qname(buf, &record->name);
+void parse_resource_record(u8 **buf, u8 *name_buf, DnsResourceRecord *record) {
+  if (**buf == 0xc0) {
+    ++*buf;
+    u8 *p = name_buf + **buf;
+    parse_qname(&p, &record->name);
+    ++*buf;
+  } else
+    parse_qname(buf, &record->name);
+
   memcpy(&record->type, *buf, 2);
   record->type = ntohs(record->type);
   *buf += 2;
@@ -113,6 +126,24 @@ void parse_resource_record(u8 **buf, DnsResourceRecord *record) {
   *buf += 2;
   record->rdata = malloc(record->rdlength);
   memcpy(record->rdata, *buf, record->rdlength);
+  *buf += record->rdlength;
+}
+
+void dump_resource_record(u8 **buf, DnsResourceRecord *record) {
+  dump_name(buf, record->name);
+  record->type = htons(record->type);
+  memcpy(*buf, &record->type, 2);
+  *buf += 2;
+  record->class = htons(record->class);
+  memcpy(*buf, &record->class, 2);
+  *buf += 2;
+  record->ttl = htonl(record->ttl);
+  memcpy(*buf, &record->ttl, 4);
+  *buf += 4;
+  record->rdlength = htons(record->rdlength);
+  memcpy(*buf, &record->rdlength, 2);
+  *buf += 2;
+  memcpy(*buf, record->rdata, ntohs(record->rdlength));
   *buf += record->rdlength;
 }
 

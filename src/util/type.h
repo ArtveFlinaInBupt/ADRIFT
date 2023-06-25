@@ -19,4 +19,30 @@ typedef int64_t i64;
 typedef float f32;
 typedef double f64;
 
+static inline u32 min_u32(u32 a, u32 b) {
+  return a < b ? a : b;
+}
+
+static inline size_t stream_length(const u8 *str) {
+  size_t len = 0;
+  while (*str++ != '\0')
+    ++len;
+  return len;
+}
+
+static inline void stream_copy(u8 *dst, const u8 *src) {
+  while (*src != '\0')
+    *dst++ = *src++;
+}
+
+static inline int stream_compare(u8 *dst, const u8 *src) {
+  while (*dst != '\0' && *src != '\0') {
+    if (*dst != *src)
+      return *dst - *src;
+    ++dst;
+    ++src;
+  }
+  return *dst - *src;
+}
+
 #endif // ADRIFT_UTIL_TYPE_H

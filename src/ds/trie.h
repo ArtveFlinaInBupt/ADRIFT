@@ -3,27 +3,29 @@
 #ifndef ADRIFT_DS_TRIE_H
 #  define ADRIFT_DS_TRIE_H
 
+#  include "ds/list.h"
 #  include "util/type.h"
 
 #  include <stdlib.h>
 
 typedef struct TrieNode {
-  void *data; // TODO: change type
-  struct TrieNode *child[129];
+  List *data;
+  struct TrieNode *child[95];
 } TrieNode;
 
-static inline TrieNode *trie_node_ctor(const void *data) {
+static inline TrieNode *trie_node_ctor() {
   TrieNode *node = (TrieNode *)calloc(1, sizeof(TrieNode));
-  node->data = (void *)data; // TODO: copy
   return node;
 }
 
 static inline void trie_node_dtor(TrieNode **node) {
   if (*node == NULL)
     return;
+  list_dtor(&(*node)->data);
   for (i32 i = 0; i < 129; i++)
     trie_node_dtor(&(*node)->child[i]);
   free(*node);
+  *node = NULL;
 }
 
 typedef struct Trie {
@@ -32,7 +34,7 @@ typedef struct Trie {
 
 static inline Trie *trie_ctor(void) {
   Trie *trie = (Trie *)calloc(1, sizeof(Trie));
-  trie->root = trie_node_ctor(NULL);
+  trie->root = trie_node_ctor();
   return trie;
 }
 
@@ -45,24 +47,26 @@ static inline void trie_dtor(Trie **trie) {
 
 /// @brief Insert or modify key into trie.
 /// @details If key already exists, modify data.
-static inline void trie_insert(Trie *trie, const char *key, const void *data) {
+static inline void trie_insert(Trie *trie, const u8 *key, void *data) {
   TrieNode *node = trie->root;
   while (*key != '\0') {
-    i32 cur_idx = (i32)*key;
+    i32 cur_idx = *key - 33;
     if (node->child[cur_idx] == NULL)
-      node->child[cur_idx] = trie_node_ctor(NULL);
+      node->child[cur_idx] = trie_node_ctor();
     node = node->child[cur_idx];
     key++;
   }
-  node->data = (void *)data; // TODO: copy
+  if (node->data == NULL)
+    node->data = list_ctor();
+  list_push_back(node->data, data);
 }
 
 /// @brief Find key in trie.
 /// @return Data if found, NULL otherwise.
-static inline void *trie_find(Trie *trie, const char *key) {
+static inline void *trie_find(Trie *trie, const u8 *key) {
   TrieNode *node = trie->root;
   while (*key != '\0') {
-    i32 cur_idx = (i32)*key;
+    i32 cur_idx = *key - 33;
     if (node->child[cur_idx] == NULL)
       return NULL;
     node = node->child[cur_idx];
@@ -73,18 +77,17 @@ static inline void *trie_find(Trie *trie, const char *key) {
 
 /// @brief Delete key from trie.
 /// @return Data if found, NULL otherwise.
-static inline void *trie_delete(Trie *trie, const char *key) {
+static inline void trie_delete(Trie *trie, const u8 *key) {
   TrieNode *node = trie->root;
   while (*key != '\0') {
-    i32 cur_idx = (i32)*key;
+    i32 cur_idx = *key - 33;
     if (node->child[cur_idx] == NULL)
-      return NULL;
+      return;
     node = node->child[cur_idx];
     key++;
   }
-  void *data = node->data;
+  list_dtor(&node->data);
   node->data = NULL;
-  return data;
 }
 
 #endif // ADRIFT_DS_TRIE_H

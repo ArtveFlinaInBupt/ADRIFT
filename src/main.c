@@ -12,6 +12,7 @@
 #include <pthread.h>
 #include <semaphore.h>
 #include <dispatch/dispatch.h>
+#include "protocol/cache.h"
 #include <stdio.h> 
 
 
@@ -71,15 +72,14 @@ typedef struct ThreadArg {
     ssize_t recv_len;
 } ThreadArg;
 
-
-void *pthread_func(void *arg_){
+void *pthread_func(void *arg_) {
     ThreadArg *arg = (ThreadArg *)arg_;
 
     // 解析dns包头
     DnsHeader header;
     u8 *buf = arg->buf;
-    u8 *data = arg->buf;
     parse_header(&buf, &header);
+    u8 *body_ = buf;
 
     // 如果是请求报文
     if (header.qr == 0) {
@@ -102,7 +102,7 @@ void *pthread_func(void *arg_){
             buf1_len = 1;
         }
 
-        /// TODO？: 写 cache
+        /// TODO?: 写 cache
 
         /// 写向上游的请求报文
         header.id = buf1_len++;
@@ -111,7 +111,7 @@ void *pthread_func(void *arg_){
         // memcpy(relay_data, data, BUFF_LEN - sizeof(DnsHeader));
         dump_header(&buf_relay, header);
         dump_question(&buf_relay, &question);
-        // TODO？: 解析获得包长度
+        // TODO?: 解析获得包长度
         sendto(server_fd, buf_relay_, buf_relay - buf_relay_, 0, (struct sockaddr *)&dns_addr, sizeof(dns_addr));
 
         /// 等待上级dns回复或者超时
@@ -145,27 +145,106 @@ void *pthread_func(void *arg_){
         printf("释放\n");
         convert_table[header.id].valid = 0;
         dispatch_source_cancel(timer);
-    } else if (header.qr == 1) {
-        // TODO: 解析响应
+    } else if (header.qr == 1) { // 如果是响应报文
+        // 解析响应报文中的 Question
+        DnsQuestion question;
+        parse_question(&buf, &question);
 
-        /// TODO: 写 cache
+        // TODO: 解析响应报文
+        DnsResourceRecord **answer = NULL;
+        DnsResourceRecord **authority = NULL;
+        DnsResourceRecord **additional = NULL;
 
-        /// TODO: 写向下游的响应报文
+        if (header.ancount > 0) {
+            answer = (DnsResourceRecord **)malloc(sizeof(DnsResourceRecord *) * header.ancount);
+            for (int i = 0; i < header.ancount; i++) {
+                answer[i] = (DnsResourceRecord *)malloc(sizeof(DnsResourceRecord));
+                for (int j = 0; j < sizeof(DnsResourceRecord); ++j)
+                  fprintf(stderr, "%02x ", buf[j]);
+                fprintf(stderr, "\n");
+                parse_resource_record(&buf, arg->buf, answer[i]);
+            }
+        }
+        if (header.nscount > 0) {
+            authority = (DnsResourceRecord **)malloc(sizeof(DnsResourceRecord *) * header.nscount);
+            for (int i = 0; i < header.nscount; i++) {
+                authority[i] = (DnsResourceRecord *)malloc(sizeof(DnsResourceRecord));
+                parse_resource_record(&buf, arg->buf, authority[i]);
+            }
+        }
+        if (header.arcount > 0) {
+            additional = (DnsResourceRecord **)malloc(sizeof(DnsResourceRecord *) * header.arcount);
+            for (int i = 0; i < header.arcount; i++) {
+                additional[i] = (DnsResourceRecord *)malloc(sizeof(DnsResourceRecord));
+                parse_resource_record(&buf, arg->buf, additional[i]);
+            }
+        }
+
+        /// 写 cache
+        time_t cur_time = time(NULL);
+        for (int i = 0; i < header.ancount; i++) {
+            ListNode *node = list_node_ctor_with_info(answer[i], ANSWER, cur_time, min_u32(180, answer[i]->ttl));
+            if (answer[i]->type == 1)
+                cache_insert(CACHE_TYPE_IPV4, answer[i]->name, node);
+            else if (answer[i]->type == 28)
+                cache_insert(CACHE_TYPE_IPV6, answer[i]->name, node);
+        }
+        for (int i = 0; i < header.nscount; i++) {
+            ListNode *node = list_node_ctor_with_info(authority[i], AUTHORITY, cur_time, min_u32(180, authority[i]->ttl));
+            if (authority[i]->type == 1)
+                cache_insert(CACHE_TYPE_IPV4, authority[i]->name, node);
+            else if (authority[i]->type == 28)
+                cache_insert(CACHE_TYPE_IPV6, authority[i]->name, node);
+        }
+        for (int i = 0; i < header.arcount; i++) {
+            ListNode *node = list_node_ctor_with_info(additional[i], ADDITIONAL, cur_time, min_u32(180, additional[i]->ttl));
+            if (additional[i]->type == 1)
+                cache_insert(CACHE_TYPE_IPV4, additional[i]->name, node);
+            else if (additional[i]->type == 28)
+                cache_insert(CACHE_TYPE_IPV6, additional[i]->name, node);
+        }
+
         /// 获得 id 与检查有效性（未超时）
         uint16_t req_id = header.id;
         if (convert_table[req_id].valid == 0) {
-            printf("invalid response!\n");
+            printf("invalid response!\n"); // TODO: 疑似应当返回错误而不是直接丢弃
             free(arg);
             return NULL;
         }
 
-        // TODO: 检查 ttl 和有效性,这里默认转发表有效
+        /// TODO: 写向下游的响应报文
         uint8_t buf_relay_[BUFF_LEN];
         u8 *buf_relay = buf_relay_;
+
+        // 写 header
         header.id = convert_table[req_id].buf_req_id;
+        // TODO: 一些字段需要修改，如 aa
         dump_header(&buf_relay, header);
-        memcpy(buf_relay, data + sizeof(DnsHeader), BUFF_LEN - sizeof(DnsHeader));
-        sendto(server_fd, buf_relay_, arg->recv_len, 0, (struct sockaddr *)&(convert_table[req_id].buf_sock), sizeof(convert_table[req_id].buf_sock));
+
+//        debug(0, "question name: %s\n", question.qname);
+//        debug(0, "question type: %d\n", question.qtype);
+//        debug(0, "question class: %d\n", question.qclass);
+        dump_question(&buf_relay, &question);
+
+        // 写 answer body
+        for (int i = 0; i < header.ancount; i++) {
+            dump_resource_record(&buf_relay, answer[i]);
+            free(answer[i]);
+        }
+        for (int i = 0; i < header.nscount; i++) {
+            dump_resource_record(&buf_relay, authority[i]);
+            free(authority[i]);
+        }
+        for (int i = 0; i < header.arcount; i++) {
+            dump_resource_record(&buf_relay, additional[i]);
+            free(additional[i]);
+        }
+        free(answer);
+        free(authority);
+        free(additional);
+
+//      memcpy(buf_relay, data + sizeof(DnsHeader), BUFF_LEN - sizeof(DnsHeader));
+        sendto(server_fd, buf_relay_, buf_relay - buf_relay_, 0, (struct sockaddr *)&(convert_table[req_id].buf_sock), sizeof(convert_table[req_id].buf_sock));
 
         // 释放转发表
 #ifdef __APPLE__
@@ -179,9 +258,40 @@ void *pthread_func(void *arg_){
     return NULL;
 }
 
-int main(int argc, char const *argv[]){
+void exit_handler(int sig) {
+    if (!sig || sig == SIGHUP || sig == SIGINT || sig == SIGTERM) {
+        if (sig != 0)
+          debug(0, "Exit with signal %d\n", sig);
+        close(server_fd);
+        destroy_log_file();
+        cache_dtor(CACHE_TYPE_IPV4);
+        cache_dtor(CACHE_TYPE_IPV6);
+        exit(0);
+    }
+}
+
+int program_init(const Arguments *args) {
+  set_debug_level(args->debug_level);
+  if (args->log_file) {
+      set_log_file(args->log_file);
+      print_log(SUCCESS, "Log file: %s\n", args->log_file);
+  }
+
+  signal(SIGHUP, exit_handler);
+  signal(SIGINT, exit_handler);
+  signal(SIGTERM, exit_handler);
+  signal(SIGQUIT, exit_handler);
+
+  return 0;
+}
+
+int server_init(const Arguments *args) {
+    if (args->dns_server)
+      dns_addr.sin_addr.s_addr = inet_addr(args->dns_server);
+    print_log(SUCCESS, "DNS server: %s\n", inet_ntoa(dns_addr.sin_addr));
+
     server_fd = socket(AF_INET, SOCK_DGRAM, 0);
-    if(server_fd < 0){
+    if (server_fd < 0) {
         printf("create socket failed!\n");
     }
 
@@ -191,38 +301,49 @@ int main(int argc, char const *argv[]){
     server_addr.sin_addr.s_addr = htonl(INADDR_ANY);
     int ret;
     ret = bind(server_fd, (struct sockaddr*)&server_addr, sizeof(server_addr));
-    if(ret < 0){
+    if (ret < 0) {
         printf("bind failed!\n");
         return -1;
     }
 
-    
 #ifdef __APPLE__
-    for(int i = 0;i < MAP_LEN;i++){
-        dispatch_semaphore_t *sem = &(convert_table[i].sem);
-        *sem = dispatch_semaphore_create(0);
-
-        sem_init(&(convert_table[i].sem), 0, 0);
-    }
-
+    for (int i = 0; i < MAP_LEN; i++)
+        convert_table[i].sem = dispatch_semaphore_create(0);
 #else
-    for(int i = 0;i < MAP_LEN;i++){
-        sem_init(&(convert_table[i].sem), 0, 0);
-    }
+    for (int i = 0; i < MAP_LEN; i++)
+        sem_init(&convert_table[i].sem, 0, 0);
 #endif
 
+    cache_ctor(CACHE_TYPE_IPV4);
+    cache_ctor(CACHE_TYPE_IPV6);
+
+    return 0;
+}
+
+int main(int argc, char **argv) {
+    Arguments args = parse_arguments(argc, argv);
+    if (args.version) {
+      print_version();
+      return EXIT_SUCCESS;
+    }
+    if (args.help) {
+      print_usage(argv[0]);
+      return EXIT_SUCCESS;
+    }
+
+    dump_arguments(&args);
+    program_init(&args);
+    if (server_init(&args) < 0)
+      return EXIT_FAILURE;
 
     unsigned sock_len = sizeof(struct sockaddr_in);
-    while(1){
-
+    while (1) {
         // 注意free
-        ThreadArg * arg = (ThreadArg *)malloc(sizeof(ThreadArg));
-        memset(arg, 0, sizeof(ThreadArg));
-        int recv_len = recvfrom(server_fd, arg->buf, BUFF_LEN, 0, (struct sockaddr*)&(arg->client_addr), &sock_len);
-
-        if(recv_len < 0){
-            printf("recvfrom failed!\n");
-            return -1;
+        ThreadArg *arg = (ThreadArg *)calloc(1, sizeof(ThreadArg));
+        ssize_t recv_len = recvfrom(server_fd, arg->buf, BUFF_LEN, 0, (struct sockaddr *)&(arg->client_addr), &sock_len);
+        if (recv_len < 0) {
+            print_log(FAILURE, "recvfrom failed!\n");
+            break;
         }
 //        for (int i = 0; i < recv_len; i++){
 //            printf("%02x ", arg->buf[i]);
@@ -232,8 +353,10 @@ int main(int argc, char const *argv[]){
         printf("recvfrom client addr: %s\n", inet_ntoa(arg->client_addr.sin_addr));
         // printf("recvfrom client data: %s\n", buf);
         pthread_t tid;
-        pthread_create(&tid, NULL, pthread_func, (void*)arg);
+        pthread_create(&tid, NULL, pthread_func, (void *)arg);
     }
+
+    exit_handler(0);
 
     return 0;
 }

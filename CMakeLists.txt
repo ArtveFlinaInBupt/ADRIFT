@@ -15,4 +15,4 @@ add_executable(ADRIFT
     ${SRC_DIR}/ds/hash.h
     ${SRC_DIR}/ds/hash_map.h
     ${SRC_DIR}/protocol/protocol.c
-)
+        src/protocol/cache.c src/protocol/cache.h src/ds/list.h)
