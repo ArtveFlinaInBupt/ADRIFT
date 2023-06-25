@@ -80,19 +80,19 @@ static inline void hash_map_rehash(HashMap *hash_map, size_t capacity) {
 }
 
 static inline void
-hash_map_insert(HashMap *hash_map, const u8 *key, void *value) {
+hash_map_insert(HashMap *hash_map, const u8 *key, ListNode *node) {
   u64 hash_ = hash(key, stream_length(key));
   size_t idx = hash_ % hash_map->capacity;
   HashMapEntry *entry = hash_map->table[idx];
   while (entry != NULL) {
     if (entry->hash == hash_ && stream_compare(entry->key, key) == 0) {
-      list_push_back(entry->value, value);
+      list_push_back(entry->value, node);
       return;
     }
     entry = entry->next;
   }
   entry = hash_map_entry_ctor(key);
-  list_push_back(entry->value, value);
+  list_push_back(entry->value, node);
   entry->next = hash_map->table[idx];
   hash_map->table[idx] = entry;
   hash_map->size++;

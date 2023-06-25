@@ -48,7 +48,7 @@ Arguments default_arguments(void) {
 Arguments parse_arguments(int argc, char **argv) {
   Arguments args = default_arguments();
 
-  for (int opt; (opt = getopt(argc, argv, "d:f:hl:.s:v")) != -1;) {
+  for (int opt; (opt = getopt(argc, argv, "d:f:hl:s:v")) != -1;) {
     switch (opt) {
       case 'd':
         args.debug_level = (i32)strtol(optarg, NULL, 10);

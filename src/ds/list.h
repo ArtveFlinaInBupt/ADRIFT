@@ -10,7 +10,7 @@
 #  include <time.h>
 
 typedef struct ListNode {
-  void *data;
+  DnsResourceRecord *data;
   time_t record_time;
   time_t ttl;
   RrType type;
@@ -41,6 +41,7 @@ static inline ListNode *list_node_ctor_with_info(
     void *data, RrType rr_type, time_t record_time, time_t ttl
 ) {
   ListNode *node = list_node_ctor(data);
+  node->type = rr_type;
   node->record_time = record_time;
   node->ttl = ttl;
   return node;
@@ -89,8 +90,8 @@ static inline void list_dtor(List **list) {
 /// @brief Pushes an element to the beginning of the list.
 /// @param list The list.
 /// @param data The data to push.
-static inline void list_push_back(List *list, void *data) {
-  ListNode *node = list_node_ctor(data);
+static inline void list_push_back(List *list, ListNode *node) {
+//  ListNode *node = list_node_ctor(data);
   list->tail->next = node;
   node->prev = list->tail;
   list->tail = node;
@@ -121,7 +122,7 @@ static inline void list_update(List *list) {
   time_t now = time(NULL);
   for (ListNode *node = list->head, *next; node != NULL; node = next) {
     next = node->next;
-    if (node->ttl != 0 && now - (node->record_time + node->ttl) < 10)
+    if (node->ttl != 0 && now - (node->record_time + node->ttl) > 10)
       list_erase(list, node);
   }
 }

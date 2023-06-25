@@ -63,7 +63,7 @@ void timer_handler(void *context) {
 struct sockaddr_in dns_addr = {
     .sin_family = AF_INET,
     .sin_port = htons(53),
-    .sin_addr.s_addr = 0x2d09030a
+    .sin_addr.s_addr = 0x2c09030a
 };
 
 typedef struct ThreadArg {
@@ -91,7 +91,63 @@ void *pthread_func(void *arg_) {
             debug(0, "qname: %s, qtype: %d, qclass: %d\n", question.qname, question.qtype, question.qclass);
         }
 
-        /// TODO: 查找 cache，向下游发包
+        /// TODO: 查找 cache，删除过期 cache，向下游发包
+        List *list = NULL;
+        if (question.qtype == 1) {
+          list = cache_find(CACHE_TYPE_IPV4, question.qname);
+        } else if (question.qtype == 28) {
+          list = cache_find(CACHE_TYPE_IPV6, question.qname);
+        }
+
+        if (list != NULL) {
+          list_update(list); /// TODO: update 之后链表为空
+
+          DnsHeader header_downstream = get_default_header();
+          header_downstream.id = header.id;
+          header_downstream.qr = 1;
+          header_downstream.qdcount = 1;
+          for (ListNode *p = list->head; p != NULL; p = p->next) {
+            switch (p->type) {
+              case ANSWER:
+                ++header_downstream.ancount;
+                break;
+              case AUTHORITY:
+                ++header_downstream.nscount;
+                break;
+              case ADDITIONAL:
+                ++header_downstream.arcount;
+                break;
+            }
+          }
+          if (header_downstream.ancount != 0 || header_downstream.nscount != 0 || header_downstream.arcount != 0) {
+            u8 buf_downstream_[BUFF_LEN];
+            u8 *buf_downstream = buf_downstream_;
+            dump_header(&buf_downstream, header_downstream);
+            dump_question(&buf_downstream, &question);
+            for (ListNode *p = list->head; p != NULL; p = p->next) {
+              if (p->data == NULL)
+                continue;
+
+              DnsResourceRecord *rr
+                  = (DnsResourceRecord *)malloc(sizeof(DnsResourceRecord));
+              memcpy(rr, p->data, sizeof(DnsResourceRecord));
+              rr->ttl = p->ttl - (time(NULL) - p->record_time);
+              dump_resource_record(&buf_downstream, rr);
+              free(rr);
+            }
+
+            sendto(
+                server_fd,
+                buf_downstream_,
+                buf_downstream - buf_downstream_,
+                0,
+                (struct sockaddr *)&arg->client_addr,
+                sizeof(arg->client_addr)
+            );
+
+            return NULL;
+          }
+        }
 
         /// 写转换表
         // 获得 id
@@ -101,8 +157,6 @@ void *pthread_func(void *arg_) {
         if (buf1_len >= MAP_LEN) {
             buf1_len = 1;
         }
-
-        /// TODO?: 写 cache
 
         /// 写向上游的请求报文
         header.id = buf1_len++;
@@ -159,10 +213,8 @@ void *pthread_func(void *arg_) {
             answer = (DnsResourceRecord **)malloc(sizeof(DnsResourceRecord *) * header.ancount);
             for (int i = 0; i < header.ancount; i++) {
                 answer[i] = (DnsResourceRecord *)malloc(sizeof(DnsResourceRecord));
-                for (int j = 0; j < sizeof(DnsResourceRecord); ++j)
-                  fprintf(stderr, "%02x ", buf[j]);
-                fprintf(stderr, "\n");
                 parse_resource_record(&buf, arg->buf, answer[i]);
+                debug(0, "name: %s, type: %d, class: %d, ttl: %d, rdlength: %d\n", answer[i]->name, answer[i]->type, answer[i]->class, answer[i]->ttl, answer[i]->rdlength);
             }
         }
         if (header.nscount > 0) {
@@ -220,30 +272,22 @@ void *pthread_func(void *arg_) {
         header.id = convert_table[req_id].buf_req_id;
         // TODO: 一些字段需要修改，如 aa
         dump_header(&buf_relay, header);
-
-//        debug(0, "question name: %s\n", question.qname);
-//        debug(0, "question type: %d\n", question.qtype);
-//        debug(0, "question class: %d\n", question.qclass);
         dump_question(&buf_relay, &question);
 
         // 写 answer body
         for (int i = 0; i < header.ancount; i++) {
             dump_resource_record(&buf_relay, answer[i]);
-            free(answer[i]);
         }
         for (int i = 0; i < header.nscount; i++) {
             dump_resource_record(&buf_relay, authority[i]);
-            free(authority[i]);
         }
         for (int i = 0; i < header.arcount; i++) {
             dump_resource_record(&buf_relay, additional[i]);
-            free(additional[i]);
         }
         free(answer);
         free(authority);
         free(additional);
 
-//      memcpy(buf_relay, data + sizeof(DnsHeader), BUFF_LEN - sizeof(DnsHeader));
         sendto(server_fd, buf_relay_, buf_relay - buf_relay_, 0, (struct sockaddr *)&(convert_table[req_id].buf_sock), sizeof(convert_table[req_id].buf_sock));
 
         // 释放转发表
@@ -338,7 +382,7 @@ int main(int argc, char **argv) {
 
     unsigned sock_len = sizeof(struct sockaddr_in);
     while (1) {
-        // 注意free
+        // 注意 free
         ThreadArg *arg = (ThreadArg *)calloc(1, sizeof(ThreadArg));
         ssize_t recv_len = recvfrom(server_fd, arg->buf, BUFF_LEN, 0, (struct sockaddr *)&(arg->client_addr), &sock_len);
         if (recv_len < 0) {

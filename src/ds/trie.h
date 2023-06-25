@@ -47,7 +47,7 @@ static inline void trie_dtor(Trie **trie) {
 
 /// @brief Insert or modify key into trie.
 /// @details If key already exists, modify data.
-static inline void trie_insert(Trie *trie, const u8 *key, void *data) {
+static inline void trie_insert(Trie *trie, const u8 *key, ListNode *data) {
   TrieNode *node = trie->root;
   while (*key != '\0') {
     i32 cur_idx = *key - 33;
@@ -63,7 +63,7 @@ static inline void trie_insert(Trie *trie, const u8 *key, void *data) {
 
 /// @brief Find key in trie.
 /// @return Data if found, NULL otherwise.
-static inline void *trie_find(Trie *trie, const u8 *key) {
+static inline List *trie_find(Trie *trie, const u8 *key) {
   TrieNode *node = trie->root;
   while (*key != '\0') {
     i32 cur_idx = *key - 33;

@@ -2,6 +2,7 @@
 
 #include "ds/hash_map.h"
 #include "ds/trie.h"
+#include "util/log.h"
 #include "util/type.h"
 
 Trie *trie[2] = {NULL, NULL};
@@ -17,15 +18,17 @@ void cache_dtor(CacheType cache_type) {
   hash_map_dtor(&hash_map[cache_type]);
 }
 
-void cache_insert(CacheType cache_type, const u8 *key, void *value) {
+void cache_insert(CacheType cache_type, const u8 *key, ListNode *node) {
+  debug(0, "cache_insert: %s", (char *)(key)); // TODO: debug level
   if (stream_length(key) <= 16) {
-    trie_insert(trie[cache_type], key, value);
+    trie_insert(trie[cache_type], key, node);
   } else {
-    hash_map_insert(hash_map[cache_type], key, value);
+    hash_map_insert(hash_map[cache_type], key, node);
   }
 }
 
-const List *cache_find(CacheType cache_type, const u8 *key) {
+List *cache_find(CacheType cache_type, const u8 *key) {
+  debug(0, "cache_find: %s", (char *)(key)); // TODO: debug level
   if (stream_length(key) <= 16) {
     return trie_find(trie[cache_type], key);
   } else {

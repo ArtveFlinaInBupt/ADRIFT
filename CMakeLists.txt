@@ -7,6 +7,10 @@ set(SRC_DIR src)
 
 include_directories(${SRC_DIR})
 
+set(CMAKE_CXX_FLAGS "-W -Wall -Wextra -Wpedantic")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -Og")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3")
+
 add_executable(ADRIFT
     ${SRC_DIR}/main.c
     ${SRC_DIR}/cli/parse.c

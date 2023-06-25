@@ -18,8 +18,8 @@ void cache_ctor(CacheType cache_type);
 
 void cache_dtor(CacheType cache_type);
 
-void cache_insert(CacheType cache_type, const u8 *key, void *value);
+void cache_insert(CacheType cache_type, const u8 *key, ListNode *value);
 
-const List *cache_find(CacheType cache_type, const u8 *key);
+List *cache_find(CacheType cache_type, const u8 *key);
 
 #endif // ADRIFT_PROTOCOL_CACHE_H

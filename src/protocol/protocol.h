@@ -51,6 +51,10 @@ void parse_header(u8 **buf, DnsHeader *header);
 
 void dump_header(u8 **buf, DnsHeader header);
 
+DnsHeader get_error_header(int rcode);
+
+DnsHeader get_default_header(void);
+
 /// @brief Get the length of a qname.
 /// @param buf The buffer to get the length from.
 /// @return The length of the qname.
