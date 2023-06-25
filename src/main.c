@@ -13,8 +13,7 @@
 
 #define BUFF_LEN 1024
 #define SERVER_PORT 53
-#define MAP_LEN 65535
-
+#define MAP_LEN 0xffff
 
 // 获取一个udp请求,如果是来自客户端的请求,则进行解析,得到请求的网址
 // 如果网址在cache里面,就将结果返回
@@ -46,14 +45,20 @@ void *pthread_func(void *a){
 
     // 解析dns包头
     DnsHeader header;
-    uint8_t * data = parse_header(arg->buf, &header);
+    u8 *buf = arg->buf;
+    u8 *data = arg->buf;
+    parse_header(&buf, &header);
 
     // 如果是请求报文
     if(header.qr == 0){
         // 解析查询
         // TODO: 解析查询的内容
-        DnsQuestion question;
-        printf("\n%s\n", data);
+        DnsQuestion *questions = malloc(sizeof(DnsQuestion) * header.qdcount);
+        for (int i = 0; i < header.qdcount; i++) {
+            parse_question(&buf, &questions[i]);
+            debug(0, "qname: %s, qtype: %d, qclass: %d\n", questions[i].qname, questions[i].qtype, questions[i].qclass);
+        }
+
         // TODO: 对网址查找缓存,或者host文件,此处先假装查了没查到
 
         // 获得id
@@ -67,13 +72,18 @@ void *pthread_func(void *a){
         }
 
         // 查询上级DNS
-        header.id = buf1_len;
-        uint8_t buf_relay[BUFF_LEN];
-        uint8_t * relay_data = dump_header(buf_relay, header);
+        header.id = buf1_len++;
+        u8 buf_relay_[BUFF_LEN];
+        u8 *buf_relay = buf_relay_;
+        dump_header(&buf_relay, header);
+        for (int i = 0; i < header.qdcount; i++) {
+            dump_question(&buf_relay, &questions[i]);
+        }
         // TODO: 解析获得包长度
-        memcpy(relay_data, data, BUFF_LEN - sizeof(DnsHeader));
-        sendto(server_fd, buf_relay, arg->recv_len, 0, (struct sockaddr*)&dns_addr, sizeof(dns_addr));
-        buf1_len++;
+//        memcpy(relay_data, data, BUFF_LEN - sizeof(DnsHeader));
+        sendto(server_fd, buf_relay_, buf_relay - buf_relay_, 0, (struct sockaddr *)&dns_addr, sizeof(dns_addr));
+
+        free(questions);
     }
     else if(header.qr == 1){
         // TODO: 解析响应,加入cache
@@ -82,12 +92,13 @@ void *pthread_func(void *a){
         uint16_t req_id = header.id;
 
        // TODO: 检查ttl和有效性,这里默认转发表有效
-        uint8_t buf_relay[BUFF_LEN];
+        uint8_t buf_relay_[BUFF_LEN];
+        u8 *buf_relay = buf_relay_;
         header.id = buf_req_id[req_id];
-        uint8_t * relay_data = dump_header(buf_relay, header);
-        memcpy(relay_data, data, BUFF_LEN - sizeof(DnsHeader));
-        sendto(server_fd, buf_relay, arg->recv_len, 0, (struct sockaddr*)&(buf_sock[req_id]), sizeof(buf_sock[req_id]));
-     
+        dump_header(&buf_relay, header);
+        memcpy(buf_relay, data + sizeof(DnsHeader), BUFF_LEN - sizeof(DnsHeader));
+        sendto(server_fd, buf_relay_, arg->recv_len, 0, (struct sockaddr*)&(buf_sock[req_id]), sizeof(buf_sock[req_id]));
+
     }
 
     free(arg);
@@ -112,7 +123,7 @@ int main(int argc, char const *argv[]){
     }
 
 
-    int sock_len = sizeof(struct sockaddr_in);
+    unsigned sock_len = sizeof(struct sockaddr_in);
     while(1){
 
         // 注意free

@@ -5,7 +5,7 @@
 
 #  include "util/type.h"
 
-typedef struct __attribute__((packed)) {
+typedef struct __attribute__((packed)) DnsHeader {
   u16 id; // identification number
 
   u8 rd : 1;     // recursion desired
@@ -26,20 +26,24 @@ typedef struct __attribute__((packed)) {
   u16 arcount; // number of resource entries
 } DnsHeader;
 
-typedef struct { // TODO: need it be packed?
+typedef struct DnsQuestion { // TODO: need it be packed?
   u8 *qname;  // domain name
   u16 qtype;  // type of record
   u16 qclass; // class record
 } DnsQuestion;
 
-typedef struct { // TODO: need it be packed?
+typedef struct DnsResourceRecord { // TODO: need it be packed?
   u8 *name;     // domain name
   u16 type;     // type of record
   u16 class;    // class record
   u32 ttl;      // time to live
-  u16 rdlength; // length of RData
-  u8 *RData;    // resource data
+  u16 rdlength; // length of rdata
+  u8 *rdata;    // resource data
 } DnsResourceRecord;
+
+void parse_header(u8 **buf, DnsHeader *header);
+
+void dump_header(u8 **buf, DnsHeader header);
 
 /// @brief Get the length of a qname.
 /// @param buf The buffer to get the length from.
@@ -52,9 +56,15 @@ size_t get_qname_length(const u8 *buf);
 /// @details The output buffer must be freed by the caller.
 void parse_qname(u8 **buf, u8 **output);
 
-void parse_question(uint8_t **buf, DnsQuestion *question);
+void parse_question(u8 **buf, DnsQuestion *question);
 
-uint8_t* parse_header(uint8_t *buf, DnsHeader *header);
-uint8_t* dump_header(uint8_t *buf, DnsHeader header);
+void dump_question(u8 **buf, DnsQuestion *question);
+
+void destroy_question(DnsQuestion *question);
+
+void parse_resource_record(u8 **buf, DnsResourceRecord *record);
+
+void destroy_resource_record(DnsResourceRecord *record);
+
 
 #endif // ADRIFT_PROTOCOL_H
