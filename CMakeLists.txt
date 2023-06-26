@@ -20,4 +20,5 @@ add_executable(ADRIFT
     ${SRC_DIR}/ds/hash_map.h
     ${SRC_DIR}/protocol/protocol.c
     ${SRC_DIR}/protocol/cache.c
+    ${SRC_DIR}/thread/threadpool.c
         src/rwlock/rwlock.c src/rwlock/rwlock.h src/util/log.c)
