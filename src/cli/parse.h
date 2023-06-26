@@ -3,7 +3,7 @@
 #ifndef ADRIFT_CLI_PARSE_H
 #  define ADRIFT_CLI_PARSE_H
 
-#include "util/type.h"
+#  include "util/type.h"
 
 typedef struct {
   const char *dns_server;

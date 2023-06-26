@@ -1,16 +1,18 @@
 #include "handle.h"
 
-#include <arpa/inet.h>
-#include <dispatch/dispatch.h>
-#include "util/log.h"
 #include "ds/list.h"
 #include "protocol/cache.h"
+#include "util/constant.h"
+#include "util/log.h"
+
+#include <arpa/inet.h>
+#include <dispatch/dispatch.h>
 #include <pthread.h>
 
 struct sockaddr_in dns_addr = {
-    .sin_family = AF_INET,
-    .sin_port = htons(53),
-    .sin_addr.s_addr = 0x2c09030a
+  .sin_family = AF_INET,
+  .sin_port = htons(53),
+  .sin_addr.s_addr = 0x2c09030a
 };
 
 int buf1_len = 1;
@@ -191,7 +193,7 @@ int handle_send_query(
   dispatch_set_context(timer, timerContext);
   dispatch_set_finalizer_f(timer, free);
 
-  int64_t interval = 8 * NSEC_PER_SEC; // 8s, TODO: 写常量
+  i64 interval = DEFAULT_TIMEOUT;
   dispatch_time_t start_time = dispatch_time(DISPATCH_TIME_NOW, interval);
   dispatch_source_set_timer(timer, start_time, interval, 0);
   dispatch_source_set_event_handler_f(timer, timer_handler);
@@ -213,7 +215,26 @@ int handle_send_query(
 int handle_receive_query(ThreadArg *arg, u8 *buf, DnsHeader *header) {
   /// 解析下游的请求报文
   DnsQuestion question;
-  // TODO: 写个返回报错包的函数，如果 qdcount != 1 就返回报错包
+
+  if (header->qdcount != 1) {
+    print_log(FAILURE, "Error: qdcount != 1");
+    u8 buf_downstream_[BUFFER_LEN];
+    u8 *buf_downstream = buf_downstream_;
+
+    DnsHeader header_nxdomain = get_error_header(1);
+    dump_header(&buf_downstream, header_nxdomain);
+
+    sendto(
+        server_fd,
+        buf_downstream_,
+        buf_downstream - buf_downstream_,
+        0,
+        (struct sockaddr *)&arg->client_addr,
+        sizeof(arg->client_addr)
+    );
+
+    return 1;
+  }
 
   for (int i = 0; i < header->qdcount; i++) {
     parse_question(&buf, &question);
@@ -235,8 +256,9 @@ int handle_receive_query(ThreadArg *arg, u8 *buf, DnsHeader *header) {
 }
 
 int handle_send_response(
-    u16 req_id, DnsHeader *header, DnsQuestion *question, DnsResourceRecord **answer,
-    DnsResourceRecord **authority, DnsResourceRecord **additional
+    u16 req_id, DnsHeader *header, DnsQuestion *question,
+    DnsResourceRecord **answer, DnsResourceRecord **authority,
+    DnsResourceRecord **additional
 ) {
   /// 写向下游的响应报文
   uint8_t buf_relay_[BUFFER_LEN];
@@ -267,9 +289,7 @@ int handle_send_response(
   return 1;
 }
 
-int handle_receive_response(
-    ThreadArg *arg, u8 *buf, DnsHeader *header
-) {
+int handle_receive_response(ThreadArg *arg, u8 *buf, DnsHeader *header) {
   // 解析响应报文中的 Question
   DnsQuestion question;
   parse_question(&buf, &question);
@@ -289,7 +309,8 @@ int handle_receive_response(
 
       debug(
           2,
-          "Receive Answer RR name: %s, type: %d, class: %d, ttl: %d, rdlength: %d",
+          "Receive Answer RR name: %s, type: %d, class: %d, ttl: %d, rdlength: "
+          "%d",
           answer[i]->name,
           answer[i]->type,
           answer[i]->class,
@@ -366,11 +387,13 @@ int handle_receive_response(
   /// 获得 id 与检查有效性（未超时）
   u16 req_id = header->id;
   if (convert_table[req_id].valid == 0) {
-    print_log(FAILURE, "Invalid response id: %d", req_id); // TODO: 疑似应当返回 FORMERR 而不是直接丢弃
+    print_log(FAILURE, "Invalid response id: %d", req_id);
     return 0;
   }
 
-  handle_send_response(req_id, header, &question, answer, authority, additional);
+  handle_send_response(
+      req_id, header, &question, answer, authority, additional
+  );
 
   if (answer)
     free(answer);
@@ -379,7 +402,7 @@ int handle_receive_response(
   if (additional)
     free(additional);
 
-  // 释放转发表
+    // 释放转发表
 #ifdef __APPLE__
   dispatch_semaphore_signal(convert_table[req_id].sem);
 #else

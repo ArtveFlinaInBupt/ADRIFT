@@ -5,7 +5,7 @@
 
 #  include "util/type.h"
 
-#include <sys/time.h>
+#  include <sys/time.h>
 
 static inline void get_current_time_format(char *buf) {
   struct timeval tv;

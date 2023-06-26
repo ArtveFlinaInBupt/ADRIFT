@@ -2,9 +2,9 @@
 
 #include "ds/hash_map.h"
 #include "ds/trie.h"
+#include "rwlock/rwlock.h"
 #include "util/log.h"
 #include "util/type.h"
-#include "rwlock/rwlock.h"
 
 RwLock rwlock;
 
