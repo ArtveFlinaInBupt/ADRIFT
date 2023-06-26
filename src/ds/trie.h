@@ -49,13 +49,18 @@ static inline void trie_dtor(Trie **trie) {
 /// @details If key already exists, modify data.
 static inline void trie_insert(Trie *trie, const u8 *key, ListNode *data) {
   TrieNode *node = trie->root;
-  while (*key != '\0') {
-    i32 cur_idx = *key - 33;
+
+  const u8 *end = key;
+  while (*end != '\0')
+    ++end;
+  --end;
+  for (; end >= key; --end) {
+    i32 cur_idx = *end - 33;
     if (node->child[cur_idx] == NULL)
       node->child[cur_idx] = trie_node_ctor();
     node = node->child[cur_idx];
-    key++;
   }
+
   if (node->data == NULL)
     node->data = list_ctor();
   list_push_back(node->data, data);
@@ -65,13 +70,18 @@ static inline void trie_insert(Trie *trie, const u8 *key, ListNode *data) {
 /// @return Data if found, NULL otherwise.
 static inline List *trie_find(Trie *trie, const u8 *key) {
   TrieNode *node = trie->root;
-  while (*key != '\0') {
-    i32 cur_idx = *key - 33;
+
+  const u8 *end = key;
+  while (*end != '\0')
+    ++end;
+  --end;
+  for (; end >= key; --end) {
+    i32 cur_idx = *end - 33;
     if (node->child[cur_idx] == NULL)
       return NULL;
     node = node->child[cur_idx];
-    key++;
   }
+
   return node->data;
 }
 
@@ -79,13 +89,18 @@ static inline List *trie_find(Trie *trie, const u8 *key) {
 /// @return Data if found, NULL otherwise.
 static inline void trie_delete(Trie *trie, const u8 *key) {
   TrieNode *node = trie->root;
-  while (*key != '\0') {
-    i32 cur_idx = *key - 33;
+
+  const u8 *end = key;
+  while (*end != '\0')
+    ++end;
+  --end;
+  for (; end >= key; --end) {
+    i32 cur_idx = *end - 33;
     if (node->child[cur_idx] == NULL)
       return;
     node = node->child[cur_idx];
-    key++;
   }
+
   list_dtor(&node->data);
   node->data = NULL;
 }

@@ -121,33 +121,33 @@ void *pthread_func(void *arg_) {
           }
 
           if (header_downstream.ancount != 0 || header_downstream.nscount != 0 || header_downstream.arcount != 0) {
-            u8 buf_downstream_[BUFF_LEN];
-            u8 *buf_downstream = buf_downstream_;
             for (ListNode *p = list->head; p != NULL; p = p->next) {
               if (p->data == NULL)
                 continue;
 
               // if cached block
               if (p->data->rdlength == 4 && memcmp(p->data->rdata, "\x00\x00\x00\x00", 4) == 0) {
+                u8 buf_downstream_[BUFF_LEN];
+                u8 *buf_downstream = buf_downstream_;
+
                 DnsHeader header_downstream = get_error_header(NAME_ERROR);
                 header_downstream.id = header.id;
                 dump_header(&buf_downstream, header_downstream);
                 dump_question(&buf_downstream, &question);
                 dump_error_authority(&buf_downstream, &question);
-                break;
+
+                sendto(
+                    server_fd,
+                    buf_downstream_,
+                    buf_downstream - buf_downstream_,
+                    0,
+                    (struct sockaddr *)&arg->client_addr,
+                    sizeof(arg->client_addr)
+                );
+
+                return NULL;
               }
             }
-
-            sendto(
-                server_fd,
-                buf_downstream_,
-                buf_downstream - buf_downstream_,
-                0,
-                (struct sockaddr *)&arg->client_addr,
-                sizeof(arg->client_addr)
-            );
-
-            return NULL;
           }
 
           if (header_downstream.ancount != 0 || header_downstream.nscount != 0 || header_downstream.arcount != 0) {
@@ -269,9 +269,9 @@ void *pthread_func(void *arg_) {
                     answer[i], ANSWER, cur_time, min_u32(180, answer[i]->ttl)
                 );
                 if (answer[i]->type == 1)
-              cache_insert(CACHE_TYPE_IPV4, answer[i]->name, node);
+              cache_insert(CACHE_TYPE_IPV4, question.qname, node);
                 else if (answer[i]->type == 28)
-              cache_insert(CACHE_TYPE_IPV6, answer[i]->name, node);
+              cache_insert(CACHE_TYPE_IPV6, question.qname, node);
             }
             for (int i = 0; i < header.nscount; i++) {
                 ListNode *node = list_node_ctor_with_info(
@@ -281,9 +281,9 @@ void *pthread_func(void *arg_) {
                     min_u32(180, authority[i]->ttl)
                 );
                 if (authority[i]->type == 1)
-              cache_insert(CACHE_TYPE_IPV4, authority[i]->name, node);
+              cache_insert(CACHE_TYPE_IPV4, question.qname, node);
                 else if (authority[i]->type == 28)
-              cache_insert(CACHE_TYPE_IPV6, authority[i]->name, node);
+              cache_insert(CACHE_TYPE_IPV6, question.qname, node);
             }
             for (int i = 0; i < header.arcount; i++) {
                 ListNode *node = list_node_ctor_with_info(
@@ -293,9 +293,9 @@ void *pthread_func(void *arg_) {
                     min_u32(180, additional[i]->ttl)
                 );
                 if (additional[i]->type == 1)
-              cache_insert(CACHE_TYPE_IPV4, additional[i]->name, node);
+              cache_insert(CACHE_TYPE_IPV4, question.qname, node);
                 else if (additional[i]->type == 28)
-              cache_insert(CACHE_TYPE_IPV6, additional[i]->name, node);
+              cache_insert(CACHE_TYPE_IPV6, question.qname, node);
             }
         }
 
