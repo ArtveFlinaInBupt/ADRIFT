@@ -26,7 +26,7 @@ void cache_dtor(CacheType cache_type) {
 }
 
 void cache_insert(CacheType cache_type, const u8 *key, ListNode *node) {
-  debug(0, "cache_insert: %s", (char *)(key)); // TODO: debug level
+  debug(1, "Cache insert: %s", (char *)(key));
 
   rwlock_write_lock(&rwlock);
   if (stream_length(key) <= 16) {
@@ -38,7 +38,7 @@ void cache_insert(CacheType cache_type, const u8 *key, ListNode *node) {
 }
 
 List *cache_find(CacheType cache_type, const u8 *key) {
-  debug(0, "cache_find: %s", (char *)(key)); // TODO: debug level
+  debug(1, "Cache find: %s", (char *)(key));
 
   rwlock_read_lock(&rwlock);
   List *list = NULL;

@@ -53,7 +53,7 @@ Arguments parse_arguments(int argc, char **argv) {
       case 'd':
         args.debug_level = (i32)strtol(optarg, NULL, 10);
         if (args.debug_level < 0 || args.debug_level >= 3) {
-          fprintf(stderr, "Invalid debug level: %d\n", args.debug_level);
+          print_log(FAILURE, "Invalid debug level: %d", args.debug_level);
           exit(EXIT_FAILURE);
         }
         break;
