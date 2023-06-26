@@ -52,7 +52,8 @@ static inline ListNode *list_node_ctor_with_info(
 static inline void list_node_dtor(ListNode **node) {
   if (*node == NULL)
     return;
-  free((*node)->data);
+  if ((*node)->record_time != 0)
+    free((*node)->data);
   free(*node);
 }
 

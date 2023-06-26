@@ -95,11 +95,15 @@ DnsHeader get_error_header(int rcode) {
       .ra = 0,
       .z = 0,
       .rcode = rcode,
-      .qdcount = 1,
+      .qdcount = 0,
       .ancount = 0,
-      .nscount = 1,
-      .arcount = 1,
+      .nscount = 0,
+      .arcount = 0,
   };
+  if (rcode == NAME_ERROR) {
+    header.qdcount = 1;
+    header.nscount = 1;
+  }
   return header;
 }
 
@@ -207,6 +211,33 @@ void dump_resource_record(u8 **buf, DnsResourceRecord *record) {
 
   memcpy(*buf, record->rdata, record->rdlength);
   *buf += record->rdlength;
+}
+
+void dump_error_authority(u8 **buf, DnsQuestion *question) {
+  DnsResourceRecord record = {
+      .name = NULL,
+      .type = 0x0006,  // SOA
+      .class = 0x0001, // IN
+      .ttl = 10'800,   // 3 hours
+      .rdlength = 64,
+      .rdata = NULL,
+  };
+
+  record.name = malloc(1);
+  record.name[0] = 0;
+
+  record.rdata = malloc(64);
+  static u8 RDATA[64] = {
+      0x01, 0x61, 0x0c, 0x72, 0x6f, 0x6f, 0x74, 0x2d, 0x73, 0x65, 0x72,
+      0x76, 0x65, 0x72, 0x73, 0x03, 0x6e, 0x65, 0x74, 0x00, 0x05, 0x6e,
+      0x73, 0x74, 0x6c, 0x64, 0x0c, 0x76, 0x65, 0x72, 0x69, 0x73, 0x69,
+      0x67, 0x6e, 0x2d, 0x67, 0x72, 0x73, 0x03, 0x63, 0x6f, 0x6d, 0x00,
+      0x78, 0x95, 0x7c, 0x48, 0x00, 0x00, 0x07, 0x08, 0x00, 0x00, 0x03,
+      0x84, 0x00, 0x09, 0x3a, 0x80, 0x00, 0x01, 0x51, 0x80,
+  };
+  memcpy(record.rdata, RDATA, 64);
+
+  dump_resource_record(buf, &record);
 }
 
 void destroy_resource_record(DnsResourceRecord *record) {

@@ -22,7 +22,7 @@ static inline void trie_node_dtor(TrieNode **node) {
   if (*node == NULL)
     return;
   list_dtor(&(*node)->data);
-  for (i32 i = 0; i < 129; i++)
+  for (i32 i = 0; i < 95; i++)
     trie_node_dtor(&(*node)->child[i]);
   free(*node);
   *node = NULL;

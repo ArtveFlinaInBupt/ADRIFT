@@ -5,6 +5,15 @@
 
 #  include "util/type.h"
 
+typedef enum ReplyCode {
+  NO_ERROR = 0,
+  FORMAT_ERROR,
+  SERVER_FAILURE,
+  NAME_ERROR,
+  NOT_IMPLEMENTED,
+  REFUSED,
+} ReplyCode;
+
 typedef enum RrType {
   ANSWER = 1,
   AUTHORITY,
@@ -75,6 +84,8 @@ void destroy_question(DnsQuestion *question);
 void parse_resource_record(u8 **buf, u8 *name_buf, DnsResourceRecord *record);
 
 void dump_resource_record(u8 **buf, DnsResourceRecord *record);
+
+void dump_error_authority(u8 **buf, DnsQuestion *question);
 
 void destroy_resource_record(DnsResourceRecord *record);
 

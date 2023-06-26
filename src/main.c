@@ -3,8 +3,8 @@
 #include "util/ipv4addr.h"
 #include "util/log.h"
 #include "protocol/protocol.h"
-#include <arpa/inet.h>
-#include <sys/socket.h>
+//#include <arpa/inet.h>
+//#include <sys/socket.h>
 #include <sys/types.h>  
 #include <unistd.h> // for close
 #include <stdlib.h>
@@ -91,7 +91,7 @@ void *pthread_func(void *arg_) {
             debug(0, "qname: %s, qtype: %d, qclass: %d\n", question.qname, question.qtype, question.qclass);
         }
 
-        /// TODO: 查找 cache，删除过期 cache，向下游发包
+        /// 查找 cache，删除过期 cache，向下游发包
         List *list = NULL;
         if (question.qtype == 1) {
           list = cache_find(CACHE_TYPE_IPV4, question.qname);
@@ -100,7 +100,7 @@ void *pthread_func(void *arg_) {
         }
 
         if (list != NULL) {
-          list_update(list); /// TODO: update 之后链表为空
+          list_update(list);
 
           DnsHeader header_downstream = get_default_header();
           header_downstream.id = header.id;
@@ -119,6 +119,37 @@ void *pthread_func(void *arg_) {
                 break;
             }
           }
+
+          if (header_downstream.ancount != 0 || header_downstream.nscount != 0 || header_downstream.arcount != 0) {
+            u8 buf_downstream_[BUFF_LEN];
+            u8 *buf_downstream = buf_downstream_;
+            for (ListNode *p = list->head; p != NULL; p = p->next) {
+              if (p->data == NULL)
+                continue;
+
+              // if cached block
+              if (p->data->rdlength == 4 && memcmp(p->data->rdata, "\x00\x00\x00\x00", 4) == 0) {
+                DnsHeader header_downstream = get_error_header(NAME_ERROR);
+                header_downstream.id = header.id;
+                dump_header(&buf_downstream, header_downstream);
+                dump_question(&buf_downstream, &question);
+                dump_error_authority(&buf_downstream, &question);
+                break;
+              }
+            }
+
+            sendto(
+                server_fd,
+                buf_downstream_,
+                buf_downstream - buf_downstream_,
+                0,
+                (struct sockaddr *)&arg->client_addr,
+                sizeof(arg->client_addr)
+            );
+
+            return NULL;
+          }
+
           if (header_downstream.ancount != 0 || header_downstream.nscount != 0 || header_downstream.arcount != 0) {
             u8 buf_downstream_[BUFF_LEN];
             u8 *buf_downstream = buf_downstream_;
@@ -162,10 +193,8 @@ void *pthread_func(void *arg_) {
         header.id = buf1_len++;
         u8 buf_relay_[BUFF_LEN];
         u8 *buf_relay = buf_relay_;
-        // memcpy(relay_data, data, BUFF_LEN - sizeof(DnsHeader));
         dump_header(&buf_relay, header);
         dump_question(&buf_relay, &question);
-        // TODO?: 解析获得包长度
         sendto(server_fd, buf_relay_, buf_relay - buf_relay_, 0, (struct sockaddr *)&dns_addr, sizeof(dns_addr));
 
         /// 等待上级dns回复或者超时
@@ -177,7 +206,7 @@ void *pthread_func(void *arg_) {
         dispatch_source_t timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, queue);
         if (timer == NULL) {
             perror("dispatch_source_create");
-            exit(1);
+            exit(EXIT_FAILURE);
         }
         TimerContext *timerContext = (TimerContext *)malloc(sizeof(TimerContext));
         timerContext->buf_id = header.id;
@@ -204,7 +233,7 @@ void *pthread_func(void *arg_) {
         DnsQuestion question;
         parse_question(&buf, &question);
 
-        // TODO: 解析响应报文
+        // 解析响应报文
         DnsResourceRecord **answer = NULL;
         DnsResourceRecord **authority = NULL;
         DnsResourceRecord **additional = NULL;
@@ -233,27 +262,41 @@ void *pthread_func(void *arg_) {
         }
 
         /// 写 cache
-        time_t cur_time = time(NULL);
-        for (int i = 0; i < header.ancount; i++) {
-            ListNode *node = list_node_ctor_with_info(answer[i], ANSWER, cur_time, min_u32(180, answer[i]->ttl));
-            if (answer[i]->type == 1)
-                cache_insert(CACHE_TYPE_IPV4, answer[i]->name, node);
-            else if (answer[i]->type == 28)
-                cache_insert(CACHE_TYPE_IPV6, answer[i]->name, node);
-        }
-        for (int i = 0; i < header.nscount; i++) {
-            ListNode *node = list_node_ctor_with_info(authority[i], AUTHORITY, cur_time, min_u32(180, authority[i]->ttl));
-            if (authority[i]->type == 1)
-                cache_insert(CACHE_TYPE_IPV4, authority[i]->name, node);
-            else if (authority[i]->type == 28)
-                cache_insert(CACHE_TYPE_IPV6, authority[i]->name, node);
-        }
-        for (int i = 0; i < header.arcount; i++) {
-            ListNode *node = list_node_ctor_with_info(additional[i], ADDITIONAL, cur_time, min_u32(180, additional[i]->ttl));
-            if (additional[i]->type == 1)
-                cache_insert(CACHE_TYPE_IPV4, additional[i]->name, node);
-            else if (additional[i]->type == 28)
-                cache_insert(CACHE_TYPE_IPV6, additional[i]->name, node);
+        if (header.rcode == NO_ERROR) {
+            time_t cur_time = time(NULL);
+            for (int i = 0; i < header.ancount; i++) {
+                ListNode *node = list_node_ctor_with_info(
+                    answer[i], ANSWER, cur_time, min_u32(180, answer[i]->ttl)
+                );
+                if (answer[i]->type == 1)
+              cache_insert(CACHE_TYPE_IPV4, answer[i]->name, node);
+                else if (answer[i]->type == 28)
+              cache_insert(CACHE_TYPE_IPV6, answer[i]->name, node);
+            }
+            for (int i = 0; i < header.nscount; i++) {
+                ListNode *node = list_node_ctor_with_info(
+                    authority[i],
+                    AUTHORITY,
+                    cur_time,
+                    min_u32(180, authority[i]->ttl)
+                );
+                if (authority[i]->type == 1)
+              cache_insert(CACHE_TYPE_IPV4, authority[i]->name, node);
+                else if (authority[i]->type == 28)
+              cache_insert(CACHE_TYPE_IPV6, authority[i]->name, node);
+            }
+            for (int i = 0; i < header.arcount; i++) {
+                ListNode *node = list_node_ctor_with_info(
+                    additional[i],
+                    ADDITIONAL,
+                    cur_time,
+                    min_u32(180, additional[i]->ttl)
+                );
+                if (additional[i]->type == 1)
+              cache_insert(CACHE_TYPE_IPV4, additional[i]->name, node);
+                else if (additional[i]->type == 28)
+              cache_insert(CACHE_TYPE_IPV6, additional[i]->name, node);
+            }
         }
 
         /// 获得 id 与检查有效性（未超时）
@@ -264,7 +307,7 @@ void *pthread_func(void *arg_) {
             return NULL;
         }
 
-        /// TODO: 写向下游的响应报文
+        /// 写向下游的响应报文
         uint8_t buf_relay_[BUFF_LEN];
         u8 *buf_relay = buf_relay_;
 
@@ -315,21 +358,82 @@ void exit_handler(int sig) {
 }
 
 int program_init(const Arguments *args) {
+  signal(SIGHUP, exit_handler);
+  signal(SIGINT, exit_handler);
+  signal(SIGTERM, exit_handler);
+  signal(SIGQUIT, exit_handler);
+
   set_debug_level(args->debug_level);
   if (args->log_file) {
       set_log_file(args->log_file);
       print_log(SUCCESS, "Log file: %s\n", args->log_file);
   }
 
-  signal(SIGHUP, exit_handler);
-  signal(SIGINT, exit_handler);
-  signal(SIGTERM, exit_handler);
-  signal(SIGQUIT, exit_handler);
+  return 0;
+}
+
+int read_hosts_file(const char *filename) {
+  // only ipv4, in the format of "ip domain"
+  FILE *fp = fopen(filename, "r");
+  if (!fp) {
+    print_log(FAILURE, "Failed to open hosts file: %s\n", filename);
+    return -1;
+  }
+
+  char line[512 | 1];
+  while (fgets(line, 512, fp)) {
+    if (!line[0] || line[0] == '\n')
+      continue;
+
+    char *ip = strtok(line, " \t\r\n");
+    char *domain = strtok(NULL, " \t\r\n");
+    if (!ip || !domain) {
+      print_log(FAILURE, "Invalid line in hosts file: %s\n", line);
+      continue;
+    }
+
+    // if domain don't ends with '.', then add it
+    if (domain[strlen(domain) - 1] != '.') {
+      char *tmp = (char *)malloc(strlen(domain) + 2);
+      strcpy(tmp, domain);
+      strcat(tmp, ".");
+      domain = tmp;
+    }
+    struct in_addr addr;
+    if (inet_pton(AF_INET, ip, &addr) != 1) {
+      print_log(
+          FAILURE, "Invalid ip address in hosts file: %s\n", ip
+      );
+      continue;
+    }
+
+    DnsResourceRecord *rr = (DnsResourceRecord *)malloc(sizeof(DnsResourceRecord));
+    rr->name = (u8 *)malloc(strlen(domain) + 1);
+    memcpy(rr->name, domain, strlen(domain) + 1);
+    rr->type = 1; // Ipv4
+    rr->class = 1; // IN
+    rr->ttl = 180;
+    rr->rdlength = sizeof addr; // 4 octets
+    rr->rdata = (u8 *)malloc(rr->rdlength);
+    memcpy(rr->rdata, &addr, rr->rdlength);
+
+    cache_insert(
+        CACHE_TYPE_IPV4,
+        (const u8 *)domain,
+        list_node_ctor_with_info(rr, ANSWER, 0, 0)
+    );
+  }
 
   return 0;
 }
 
 int server_init(const Arguments *args) {
+    cache_ctor(CACHE_TYPE_IPV4);
+    cache_ctor(CACHE_TYPE_IPV6);
+
+    if (args->hosts_file && read_hosts_file(args->hosts_file) < 0)
+      return -1;
+
     if (args->dns_server)
       dns_addr.sin_addr.s_addr = inet_addr(args->dns_server);
     print_log(SUCCESS, "DNS server: %s\n", inet_ntoa(dns_addr.sin_addr));
@@ -358,9 +462,6 @@ int server_init(const Arguments *args) {
         sem_init(&convert_table[i].sem, 0, 0);
 #endif
 
-    cache_ctor(CACHE_TYPE_IPV4);
-    cache_ctor(CACHE_TYPE_IPV6);
-
     return 0;
 }
 
@@ -379,6 +480,9 @@ int main(int argc, char **argv) {
     program_init(&args);
     if (server_init(&args) < 0)
       return EXIT_FAILURE;
+
+//    exit_handler(0);
+//    return 0;
 
     unsigned sock_len = sizeof(struct sockaddr_in);
     while (1) {
