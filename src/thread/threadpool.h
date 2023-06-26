@@ -7,52 +7,52 @@
 #include <unistd.h>
 #include <pthread.h>
 
-//ÈÎÎñ
+//ä»»åŠ¡
 typedef struct Task
 {
     void (*function) (void* arg);
     void* arg;
 }Task;
 
-//Ïß³Ì³Ø
+//çº¿ç¨‹æ± 
 typedef struct Threadpool
 {
-    //ÈÎÎñ¶ÓÁĞ
+    //ä»»åŠ¡é˜Ÿåˆ—
     Task* taskQ;
-    int queueCapacity;           //ÈİÁ¿
-    int queueSize;               //µ±Ç°ÈÎÎñ¸öÊı
-    int queueFront;              //¶ÓÍ·£¬È¡Êı¾İ
-    int queueRear;               //¶ÓÎ²£¬·ÅÊı¾İ
+    int queueCapacity;           //å®¹é‡
+    int queueSize;               //å½“å‰ä»»åŠ¡ä¸ªæ•°
+    int queueFront;              //é˜Ÿå¤´ï¼Œå–æ•°æ®
+    int queueRear;               //é˜Ÿå°¾ï¼Œæ”¾æ•°æ®
 
-    pthread_t managerID;         //¹ÜÀíÕßÏß³ÌID
-    pthread_t* threadIDs;        //¹¤×÷µÄÏß³ÌID
-    int minNum;                  //×îĞ¡Ïß³ÌÊıÁ¿
-    int maxNum;                  //×î´óÏß³ÌÊıÁ¿
-    int busyNum;                 //Ã¦µÄÏß³Ì¸öÊı
-    int liveNum;                 //´æ»îµÄÏß³Ì¸öÊı
-    int exitNum;                 //ÒªÏú»ÙµÄÏß³Ì¸öÊı
-    pthread_mutex_t mutexPool;   //ËøÕû¸öµÄÏß³Ì³Ø
-    pthread_mutex_t mutexBusy;   //ËøbusyNum±äÁ¿
-    pthread_cond_t notFull;      //ÈÎÎñ¶ÓÁĞÊÇ·ñÂúÁË
-    pthread_cond_t notEmpty;     //ÈÎÎñ¶ÓÁĞÊÇ·ñ¿ÕÁË
+    pthread_t managerID;         //ç®¡ç†è€…çº¿ç¨‹ID
+    pthread_t* threadIDs;        //å·¥ä½œçš„çº¿ç¨‹ID
+    int minNum;                  //æœ€å°çº¿ç¨‹æ•°é‡
+    int maxNum;                  //æœ€å¤§çº¿ç¨‹æ•°é‡
+    int busyNum;                 //å¿™çš„çº¿ç¨‹ä¸ªæ•°
+    int liveNum;                 //å­˜æ´»çš„çº¿ç¨‹ä¸ªæ•°
+    int exitNum;                 //è¦é”€æ¯çš„çº¿ç¨‹ä¸ªæ•°
+    pthread_mutex_t mutexPool;   //é”æ•´ä¸ªçš„çº¿ç¨‹æ± 
+    pthread_mutex_t mutexBusy;   //é”busyNumå˜é‡
+    pthread_cond_t notFull;      //ä»»åŠ¡é˜Ÿåˆ—æ˜¯å¦æ»¡äº†
+    pthread_cond_t notEmpty;     //ä»»åŠ¡é˜Ÿåˆ—æ˜¯å¦ç©ºäº†
 
-    int shutdown;                //ÊÇ·ñÏú»ÙÏß³Ì³Ø£¬Ïú»ÙÎª1£¬²»Ïú»ÙÎª0
+    int shutdown;                //æ˜¯å¦é”€æ¯çº¿ç¨‹æ± ï¼Œé”€æ¯ä¸º1ï¼Œä¸é”€æ¯ä¸º0
 }ThreadPool;
 
 
-//´´½¨Ïß³Ì³Ø²¢³õÊ¼»¯
+//åˆ›å»ºçº¿ç¨‹æ± å¹¶åˆå§‹åŒ–
 ThreadPool *threadPoolCreate(int min, int max, int queueSize);
 
-//Ïú»ÙÏß³Ì³Ø
+//é”€æ¯çº¿ç¨‹æ± 
 int threadPoolDestroy(ThreadPool* pool);
 
-//ÏòÏß³Ì³ØÌí¼ÓÈÎÎñ
-void threadPoolAdd(ThreadPool* pool, void(*func)(void*), void* arg);
+//å‘çº¿ç¨‹æ± æ·»åŠ ä»»åŠ¡
+void threadPoolAdd(ThreadPool* pool, void* func(void*), void* arg);
 
-//»ñÈ¡Ïß³Ì³ØÖĞ¹¤×÷µÄÏß³Ì¸öÊı
+//è·å–çº¿ç¨‹æ± ä¸­å·¥ä½œçš„çº¿ç¨‹ä¸ªæ•°
 int threadPoolBusyNum(ThreadPool* pool);
 
-//»òÕßÏß³Ì³ØÖĞ»î×ÅµÄÏß³Ì¸öÊı
+//æˆ–è€…çº¿ç¨‹æ± ä¸­æ´»ç€çš„çº¿ç¨‹ä¸ªæ•°
 int threadPoolLiveNum(ThreadPool* pool);
 
 void* worker(void* arg);

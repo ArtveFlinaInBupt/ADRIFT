@@ -99,7 +99,7 @@ int threadPoolDestroy(ThreadPool* pool)
     return 0;
 }
 
-void threadPoolAdd(ThreadPool* pool, void(*func)(void*), void* arg)
+void threadPoolAdd(ThreadPool* pool, void*func(void*), void* arg)
 {
     pthread_mutex_lock(&pool->mutexPool);
     while(pool->queueSize == pool->queueCapacity && !pool->shutdown)

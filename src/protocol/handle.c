@@ -433,6 +433,7 @@ void event_loop() {
 
     arg->recv_len = recv_len;
     pthread_t thread_id;
+    // threadPoolAdd(pool, pthread_func, (void *)arg);
     pthread_create(&thread_id, NULL, pthread_func, (void *)arg);
   }
 }

@@ -3,7 +3,7 @@
 #include "protocol/handle.h"
 #include "protocol/protocol.h"
 #include "util/log.h"
-
+#include "thread/threadpool.h"
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -162,6 +162,7 @@ int main(int argc, char **argv) {
   if (server_init(&args) < 0)
     return EXIT_FAILURE;
 
+//   ThreadPool* pool = threadPoolCreate(10, 200, 200);
   event_loop();
 
   exit_handler(0);
