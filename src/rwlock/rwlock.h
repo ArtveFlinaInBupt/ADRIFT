@@ -1,9 +1,9 @@
 #pragma once
 
 #ifndef ADRIFT_RWLOCK_RWLOCK_H
-#define ADRIFT_RWLOCK_RWLOCK_H
+#  define ADRIFT_RWLOCK_RWLOCK_H
 
-#include <pthread.h>
+#  include <pthread.h>
 
 typedef struct RwLock {
   pthread_mutex_t mutex;

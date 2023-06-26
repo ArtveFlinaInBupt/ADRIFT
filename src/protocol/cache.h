@@ -28,10 +28,11 @@
 typedef enum CacheType {
   CACHE_TYPE_IPV4 = 0,
   CACHE_TYPE_IPV6 = 1,
+  CACHE_TYPE_CNAME = 2,
 } CacheType;
 
-extern Trie *trie[2];
-extern HashMap *hash_map[2];
+extern Trie *trie[3];
+extern HashMap *hash_map[3];
 
 void cache_ctor(CacheType cache_type);
 

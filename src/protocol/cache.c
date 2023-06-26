@@ -8,8 +8,8 @@
 
 RwLock rwlock;
 
-Trie *trie[2] = {NULL, NULL};
-HashMap *hash_map[2] = {NULL, NULL};
+Trie *trie[3] = {NULL, NULL, NULL};
+HashMap *hash_map[3] = {NULL, NULL, NULL};
 
 void cache_ctor(CacheType cache_type) {
   trie[cache_type] = trie_ctor();
