@@ -41,19 +41,19 @@ typedef struct __attribute__((packed)) DnsHeader {
   u16 arcount; // number of resource entries
 } DnsHeader;
 
-typedef struct DnsQuestion { // TODO: need it be packed?
-  u8 *qname;                 // domain name
-  u16 qtype;                 // type of record
-  u16 qclass;                // class record
+typedef struct DnsQuestion {
+  u8 *qname;  // domain name
+  u16 qtype;  // type of record
+  u16 qclass; // class record
 } DnsQuestion;
 
-typedef struct DnsResourceRecord { // TODO: need it be packed?
-  u8 *name;                        // domain name
-  u16 type;                        // type of record
-  u16 class;                       // class record
-  u32 ttl;                         // time to live
-  u16 rdlength;                    // length of rdata
-  u8 *rdata;                       // resource data
+typedef struct DnsResourceRecord {
+  u8 *name;     // domain name
+  u16 type;     // type of record
+  u16 class;    // class record
+  u32 ttl;      // time to live
+  u16 rdlength; // length of rdata
+  u8 *rdata;    // resource data
 } DnsResourceRecord;
 
 void parse_header(u8 **buf, DnsHeader *header);

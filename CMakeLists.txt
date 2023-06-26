@@ -14,11 +14,10 @@ set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 add_executable(ADRIFT
     ${SRC_DIR}/main.c
     ${SRC_DIR}/cli/parse.c
-    ${SRC_DIR}/external/getopt.c
-    ${SRC_DIR}/ds/trie.h
-    ${SRC_DIR}/ds/hash.h
-    ${SRC_DIR}/ds/hash_map.h
-    ${SRC_DIR}/protocol/protocol.c
     ${SRC_DIR}/protocol/cache.c
+    ${SRC_DIR}/protocol/handle.c
+    ${SRC_DIR}/protocol/protocol.c
+    ${SRC_DIR}/rwlock/rwlock.c
     ${SRC_DIR}/thread/threadpool.c
-        src/rwlock/rwlock.c src/rwlock/rwlock.h src/util/log.c src/protocol/handle.c src/protocol/handle.h)
+    ${SRC_DIR}/util/log.c
+)

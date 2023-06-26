@@ -3,16 +3,9 @@
 #include "util/constant.h"
 #include "util/log.h"
 
+#include <getopt.h>
 #include <stdio.h>
 #include <stdlib.h>
-
-#if defined(__APPLE__) || defined(__MACH__)
-#  include <getopt.h>
-#elif defined(__linux__)
-#  include <getopt.h>
-#else
-#  include "external/getopt.h"
-#endif
 
 void print_usage(char *name) {
   printf(

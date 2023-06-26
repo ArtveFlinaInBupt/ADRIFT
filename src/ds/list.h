@@ -92,7 +92,6 @@ static inline void list_dtor(List **list) {
 /// @param list The list.
 /// @param data The data to push.
 static inline void list_push_back(List *list, ListNode *node) {
-//  ListNode *node = list_node_ctor(data);
   list->tail->next = node;
   node->prev = list->tail;
   list->tail = node;
