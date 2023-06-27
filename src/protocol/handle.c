@@ -179,7 +179,7 @@ int handle_send_query(
   convert_table[header->id].valid = 1;
 
   /// 创建定时器 dispatch timer
-  debug(1, "Start timer for query id %d", header->id);
+  debug(2, "Start timer for query id %d", header->id);
   dispatch_queue_t queue
       = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
   dispatch_source_t timer
@@ -205,7 +205,7 @@ int handle_send_query(
 #else
   sem_wait(&convert_table[header->id].sem);
 #endif
-  debug(1, "Stop timer for query id %d", header->id);
+  debug(2, "Stop timer for query id %d", header->id);
   convert_table[header->id].valid = 0;
   dispatch_source_cancel(timer);
 
@@ -449,7 +449,7 @@ void event_loop() {
 
     debug(
         1,
-        "Received from client: %s:%d",
+        "Received from: %s:%d",
         inet_ntoa(arg->client_addr.sin_addr),
         ntohs(arg->client_addr.sin_port)
     );

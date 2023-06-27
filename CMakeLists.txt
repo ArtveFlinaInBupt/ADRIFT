@@ -18,6 +18,6 @@ add_executable(ADRIFT
     ${SRC_DIR}/protocol/handle.c
     ${SRC_DIR}/protocol/protocol.c
     ${SRC_DIR}/rwlock/rwlock.c
-    ${SRC_DIR}/thread/threadpool.c
+#    ${SRC_DIR}/thread/threadpool.c
     ${SRC_DIR}/util/log.c
 )
