@@ -28,7 +28,6 @@ void exit_handler(int sig) {
     cache_dtor(CACHE_TYPE_IPV4);
     cache_dtor(CACHE_TYPE_IPV6);
     cache_dtor(CACHE_TYPE_CNAME);
-    exit(0);
   }
 }
 
