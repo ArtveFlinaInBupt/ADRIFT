@@ -38,7 +38,7 @@ static inline ListNode *list_node_ctor(void *data) {
 /// @param ttl The time to live.
 /// @return The list node.
 static inline ListNode *list_node_ctor_with_info(
-    void *data, RrType rr_type, time_t record_time, time_t ttl
+    DnsResourceRecord *data, RrType rr_type, time_t record_time, time_t ttl
 ) {
   ListNode *node = list_node_ctor(data);
   node->type = rr_type;
@@ -118,13 +118,23 @@ static inline void list_erase(List *list, ListNode *node) {
 
 /// @brief Updates the linked list, removing expired elements.
 /// @param list The list.
-static inline void list_update(List *list) {
+/// @return The size of the list after the update.
+static inline size_t list_update(List *list) {
   time_t now = time(NULL);
+  size_t size = 0;
+
+  if (list->head == NULL)
+    return 0;
+
   for (ListNode *node = list->head, *next; node != NULL; node = next) {
     next = node->next;
     if (node->ttl != 0 && now - (node->record_time + node->ttl) > 10)
       list_erase(list, node);
+    else
+      ++size;
   }
+
+  return size - 1;
 }
 
 /// @brief Checks if the list is empty.

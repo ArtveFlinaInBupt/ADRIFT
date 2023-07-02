@@ -9,11 +9,10 @@
 #include <dispatch/dispatch.h>
 #include <pthread.h>
 
-struct sockaddr_in dns_addr = {
-  .sin_family = AF_INET,
-  .sin_port = htons(53),
-  .sin_addr.s_addr = 0x2c09030a
-};
+struct sockaddr_in dns_addr
+    = {.sin_family = AF_INET,
+       .sin_port = htons(53),
+       .sin_addr.s_addr = 0x2c09030a};
 
 int buf1_len = 1;
 
@@ -23,7 +22,7 @@ typedef struct TimerContext {
 
 void timer_handler(void *context) {
   TimerContext *timerContext = (TimerContext *)context;
-  print_log(FAILURE, "超时: %d", timerContext->buf_id);
+  print_log(FAILURE, "Time out id = %d", timerContext->buf_id);
 #ifdef __APPLE__
   dispatch_semaphore_signal(convert_table[timerContext->buf_id].sem);
 #else
@@ -44,73 +43,82 @@ int handle_read_cache(
     list = cache_find(CACHE_TYPE_CNAME, question->qname);
   }
 
-  if (list != NULL) {
-    list_update(list); // 刷新缓存，删除过期项
+  if (list == NULL)
+    return 0;
 
-    DnsHeader header_downstream = get_default_header();
-    header_downstream.id = header->id;
-    header_downstream.qr = 1;
-    header_downstream.qdcount = 1;
+  list_update(list); // 刷新缓存，删除过期项
+
+  DnsHeader header_downstream = get_default_header();
+  header_downstream.id = header->id;
+  header_downstream.qr = 1;
+  header_downstream.qdcount = 1;
+  for (ListNode *p = list->head; p != NULL; p = p->next) {
+    switch (p->type) {
+      case ANSWER:
+        ++header_downstream.ancount;
+        break;
+      case AUTHORITY:
+        ++header_downstream.nscount;
+        break;
+      case ADDITIONAL:
+        ++header_downstream.arcount;
+        break;
+    }
+  }
+
+  // 特判 0.0.0.0（从 dns-relay.txt / hosts 中读取）项并直接返回错误
+  if (header_downstream.ancount != 0 || header_downstream.nscount != 0
+      || header_downstream.arcount != 0) {
     for (ListNode *p = list->head; p != NULL; p = p->next) {
-      switch (p->type) {
-        case ANSWER:
-          ++header_downstream.ancount;
-          break;
-        case AUTHORITY:
-          ++header_downstream.nscount;
-          break;
-        case ADDITIONAL:
-          ++header_downstream.arcount;
-          break;
+      if (p->data == NULL)
+        continue;
+
+      if (p->data->rdlength == 4
+          && memcmp(p->data->rdata, "\x00\x00\x00\x00", 4) == 0) {
+        u8 buf_downstream_[BUFFER_LEN];
+        u8 *buf_downstream = buf_downstream_;
+
+        DnsHeader header_downstream_error = get_error_header(NAME_ERROR);
+        header_downstream_error.id = header->id;
+        dump_header(&buf_downstream, header_downstream_error);
+        dump_question(&buf_downstream, question);
+        dump_error_authority(&buf_downstream, question);
+
+        sendto(
+            server_fd,
+            buf_downstream_,
+            buf_downstream - buf_downstream_,
+            0,
+            (struct sockaddr *)&arg->client_addr,
+            sizeof(arg->client_addr)
+        );
+        print_log(
+            SUCCESS,
+            "Send error response id = %d to client %s:%d",
+            header_downstream_error.id,
+            inet_ntoa(arg->client_addr.sin_addr),
+            ntohs(arg->client_addr.sin_port)
+        );
+
+        return 1;
       }
     }
+  }
 
-    // 特判 0.0.0.0（从 dns-relay.txt / hosts 中读取）项并直接返回错误
-    if (header_downstream.ancount != 0 || header_downstream.nscount != 0
-        || header_downstream.arcount != 0) {
-      for (ListNode *p = list->head; p != NULL; p = p->next) {
-        if (p->data == NULL)
-          continue;
+  if (!header_downstream.ancount && !header_downstream.nscount && !header_downstream.arcount)
+    return 0;
 
-        if (p->data->rdlength == 4
-            && memcmp(p->data->rdata, "\x00\x00\x00\x00", 4) == 0) {
-          u8 buf_downstream_[BUFFER_LEN];
-          u8 *buf_downstream = buf_downstream_;
+  // 缓存中有其他值（不为 0.0.0.0）
+  u8 buf_downstream_[BUFFER_LEN];
+  u8 *buf_downstream = buf_downstream_;
+  dump_header(&buf_downstream, header_downstream);
+  dump_question(&buf_downstream, question);
 
-          DnsHeader header_downstream_error = get_error_header(NAME_ERROR);
-          header_downstream_error.id = header->id;
-          dump_header(&buf_downstream, header_downstream_error);
-          dump_question(&buf_downstream, question);
-          dump_error_authority(&buf_downstream, question);
+  if (question->qtype == 1) { // A
+    List *list_cname = cache_find(CACHE_TYPE_CNAME, question->qname);
 
-          sendto(
-              server_fd,
-              buf_downstream_,
-              buf_downstream - buf_downstream_,
-              0,
-              (struct sockaddr *)&arg->client_addr,
-              sizeof(arg->client_addr)
-          );
-          debug(
-              1,
-              "Send error response to client %s",
-              inet_ntoa(arg->client_addr.sin_addr)
-          );
-          debug(2, "Response header id %d", header_downstream_error.id);
-
-          return 1;
-        }
-      }
-    }
-
-    // 缓存中有其他值（不为 0.0.0.0）
-    if (header_downstream.ancount != 0 || header_downstream.nscount != 0
-        || header_downstream.arcount != 0) {
-      u8 buf_downstream_[BUFFER_LEN];
-      u8 *buf_downstream = buf_downstream_;
-      dump_header(&buf_downstream, header_downstream);
-      dump_question(&buf_downstream, question);
-      for (ListNode *p = list->head; p != NULL; p = p->next) {
+    if (list_cname != NULL) {
+      for (ListNode *p = list_cname->head; p != NULL; p = p->next) {
         if (p->data == NULL)
           continue;
 
@@ -121,28 +129,35 @@ int handle_read_cache(
         dump_resource_record(&buf_downstream, rr);
         free(rr);
       }
-
-      sendto(
-          server_fd,
-          buf_downstream_,
-          buf_downstream - buf_downstream_,
-          0,
-          (struct sockaddr *)&arg->client_addr,
-          sizeof(arg->client_addr)
-      );
-      debug(
-          1, "Send response to client %s", inet_ntoa(arg->client_addr.sin_addr)
-      );
-      debug(2, "Response header id %d", header_downstream.id);
-      debug(2, "Response header ancount %d", header_downstream.ancount);
-      debug(2, "Response header nscount %d", header_downstream.nscount);
-      debug(2, "Response header arcount %d", header_downstream.arcount);
-
-      return 1;
     }
   }
 
-  return 0;
+  for (ListNode *p = list->head; p != NULL; p = p->next) {
+    if (p->data == NULL)
+      continue;
+
+    DnsResourceRecord *rr
+        = (DnsResourceRecord *)malloc(sizeof(DnsResourceRecord));
+    memcpy(rr, p->data, sizeof(DnsResourceRecord));
+    rr->ttl = p->ttl - (time(NULL) - p->record_time);
+    dump_resource_record(&buf_downstream, rr);
+    free(rr);
+  }
+
+  sendto(
+      server_fd,
+      buf_downstream_,
+      buf_downstream - buf_downstream_,
+      0,
+      (struct sockaddr *)&arg->client_addr,
+      sizeof(arg->client_addr)
+  );
+  print_log(
+      SUCCESS, "Sent cached response id = %d, to client %s:%d", header_downstream.id, inet_ntoa(arg->client_addr.sin_addr), ntohs(arg->client_addr.sin_port)
+  );
+  debug(2, "Cached response header ancount %d nscount %d arcount %d", header_downstream.ancount, header_downstream.nscount, header_downstream.arcount);
+
+  return 1;
 }
 
 int handle_send_query(
@@ -236,22 +251,22 @@ int handle_receive_query(ThreadArg *arg, u8 *buf, DnsHeader *header) {
     return 1;
   }
 
-  for (int i = 0; i < header->qdcount; i++) {
-    parse_question(&buf, &question);
+  parse_question(&buf, &question);
+  debug(
+      1,
+      "qname: %s, qtype: %d, qclass: %d",
+      question.qname,
+      question.qtype,
+      question.qclass
+  );
 
-    debug(
-        1,
-        "qname: %s, qtype: %d, qclass: %d",
-        question.qname,
-        question.qtype,
-        question.qclass
-    );
+  if (handle_read_cache(arg, header, &question) == 1) {
+    destroy_question(&question);
+    return 1;
   }
 
-  if (handle_read_cache(arg, header, &question) == 1)
-    return 1;
-
   handle_send_query(arg, header, &question);
+  destroy_question(&question);
   return 1;
 }
 
@@ -285,6 +300,10 @@ int handle_send_response(
       (struct sockaddr *)&(convert_table[req_id].buf_sock),
       sizeof(convert_table[req_id].buf_sock)
   );
+
+  print_log(SUCCESS, "Sent response id = %d to client %s:%d", req_id, inet_ntoa(
+      convert_table[req_id].buf_sock.sin_addr
+  ), ntohs(convert_table[req_id].buf_sock.sin_port));
 
   return 1;
 }
@@ -409,10 +428,12 @@ int handle_receive_response(ThreadArg *arg, u8 *buf, DnsHeader *header) {
   sem_post(&convert_table[req_id].sem);
 #endif
 
+  destroy_question(&question);
+
   return 1;
 }
 
-void *pthread_func(void *arg_) {
+void *handle_stream(void *arg_) {
   ThreadArg *arg = (ThreadArg *)arg_;
 
   DnsHeader header;
@@ -431,32 +452,28 @@ void *pthread_func(void *arg_) {
 void event_loop() {
   u32 sock_len = sizeof(struct sockaddr_in);
   while (1) {
-    ThreadArg *arg = (ThreadArg *)calloc(1, sizeof(ThreadArg));
+    ThreadArg *arg
+        = (ThreadArg *)calloc(1, sizeof(ThreadArg)); // free in handle_stream
 
-    ssize_t recv_len = recvfrom(
-        server_fd,
-        arg->buf,
-        BUFFER_LEN,
-        0,
-        (struct sockaddr *)&(arg->client_addr),
-        &sock_len
-    );
-
-    if (recv_len < 0) {
+    // clang-format off
+    if ((
+        arg->recv_len = recvfrom(
+            server_fd, arg->buf, BUFFER_LEN, 0,
+            (struct sockaddr *)&(arg->client_addr), &sock_len
+        )
+    ) < 0) {
       print_log(FAILURE, "recvfrom failed!");
+      free(arg);
       break;
     }
 
-    debug(
-        1,
-        "Received from: %s:%d",
-        inet_ntoa(arg->client_addr.sin_addr),
+    debug(1,
+        "Received from: %s:%d", inet_ntoa(arg->client_addr.sin_addr),
         ntohs(arg->client_addr.sin_port)
     );
+    // clang-format on
 
-    arg->recv_len = recv_len;
     pthread_t thread_id;
-    // threadPoolAdd(pool, pthread_func, (void *)arg);
-    pthread_create(&thread_id, NULL, pthread_func, (void *)arg);
+    pthread_create(&thread_id, NULL, handle_stream, (void *)arg);
   }
 }

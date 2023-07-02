@@ -218,7 +218,7 @@ void dump_error_authority(u8 **buf, DnsQuestion *question) {
       .name = NULL,
       .type = 0x0006,  // SOA
       .class = 0x0001, // IN
-      .ttl = 10'800,   // 3 hours
+      .ttl = 10800,   // 3 hours
       .rdlength = 64,
       .rdata = NULL,
   };
@@ -238,6 +238,8 @@ void dump_error_authority(u8 **buf, DnsQuestion *question) {
   memcpy(record.rdata, RDATA, 64);
 
   dump_resource_record(buf, &record);
+
+  destroy_resource_record(&record);
 }
 
 void destroy_resource_record(DnsResourceRecord *record) {

@@ -26,7 +26,7 @@ typedef struct Convert {
   struct sockaddr_in buf_sock;
 #ifdef __APPLE__
   dispatch_semaphore_t sem;
-#else
+#else // elseifdef __linux__
   sem_t sem;
 #endif
   uint8_t valid;
@@ -54,7 +54,7 @@ int handle_send_response(
 
 int handle_receive_response(ThreadArg *arg, u8 *buf, DnsHeader *header);
 
-void *pthread_func(void *arg_);
+void *handle_stream(void *arg_);
 
 void event_loop();
 

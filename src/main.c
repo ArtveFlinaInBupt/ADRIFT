@@ -2,8 +2,9 @@
 #include "protocol/cache.h"
 #include "protocol/handle.h"
 #include "protocol/protocol.h"
-#include "util/log.h"
 #include "thread/threadpool.h"
+#include "util/log.h"
+
 #include <arpa/inet.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -28,6 +29,8 @@ void exit_handler(int sig) {
     cache_dtor(CACHE_TYPE_IPV4);
     cache_dtor(CACHE_TYPE_IPV6);
     cache_dtor(CACHE_TYPE_CNAME);
+
+    exit(EXIT_SUCCESS);
   }
 }
 
@@ -90,11 +93,13 @@ int read_hosts_file(const char *filename) {
     rr->rdata = (u8 *)malloc(rr->rdlength);
     memcpy(rr->rdata, &addr, rr->rdlength);
 
-    cache_insert(
-        CACHE_TYPE_IPV4,
-        (const u8 *)domain,
-        list_node_ctor_with_info(rr, ANSWER, 0, 0)
-    );
+    ListNode *node = list_node_ctor_with_info(rr, ANSWER, 0, 0);
+    cache_insert(CACHE_TYPE_IPV4, (const u8 *)domain, node);
+
+    if (addr.s_addr == 0) {
+      cache_insert(CACHE_TYPE_IPV6, (const u8 *)domain, node);
+      cache_insert(CACHE_TYPE_CNAME, (const u8 *)domain, node);
+    }
   }
 
   return 0;
@@ -161,7 +166,7 @@ int main(int argc, char **argv) {
   if (server_init(&args) < 0)
     return EXIT_FAILURE;
 
-//   ThreadPool* pool = threadPoolCreate(10, 200, 200);
+  // ThreadPool* pool = threadPoolCreate(10, 200, 200);
   event_loop();
 
   exit_handler(0);

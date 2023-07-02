@@ -3,7 +3,7 @@
 #ifndef ADRIFT_UTIL_CONSTANT_H
 #  define ADRIFT_UTIL_CONSTANT_H
 
-#  define ADRIFT_VERSION "0.0.1"
+#  define ADRIFT_VERSION "1.0.1"
 #  define ADRIFT_NAME    "adrift"
 
 #  define DEFAULT_HOSTS_FILE  "./dnsrelay.txt"

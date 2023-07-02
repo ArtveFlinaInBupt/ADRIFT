@@ -113,6 +113,25 @@ static inline List *hash_map_find(HashMap *hash_map, const u8 *key) {
   return NULL;
 }
 
+static inline void hash_map_shrink(HashMap *hash_map) {
+  for (size_t i = 0; i < hash_map->capacity; ++i) {
+    for (HashMapEntry *entry = hash_map->table[i], *prev = NULL; entry != NULL;) {
+      if (list_update(entry->value) != 0) {
+        prev = entry;
+        entry = entry->next;
+        continue;
+      }
+      if (prev == NULL)
+        hash_map->table[i] = entry->next;
+      else
+        prev->next = entry->next;
+      hash_map_entry_dtor(&entry);
+      hash_map->size--;
+      entry = prev == NULL ? hash_map->table[i] : prev->next;
+    }
+  }
+}
+
 // static inline void hash_map_remove(HashMap *hash_map, const char *key) {
 //   u64 hash_ = hash(key, strlen(key));
 //   size_t idx = hash_ % hash_map->capacity;

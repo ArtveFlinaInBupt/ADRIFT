@@ -4,6 +4,7 @@
 #  define ADRIFT_DS_TRIE_H
 
 #  include "ds/list.h"
+#  include "util/log.h"
 #  include "util/type.h"
 
 #  include <stdlib.h>
@@ -26,6 +27,22 @@ static inline void trie_node_dtor(TrieNode **node) {
     trie_node_dtor(&(*node)->child[i]);
   free(*node);
   *node = NULL;
+}
+
+static inline size_t trie_node_shrink(TrieNode *node) {
+  size_t count = 0;
+
+  if (node->data != NULL)
+    count += list_update(node->data);
+
+  for (i32 i = 0; count == 0 && i < 95; i++)
+    if (node->child[i] != NULL)
+      count += trie_node_shrink(node->child[i]);
+
+  if (count == 0)
+    trie_node_dtor(&node);
+
+  return count;
 }
 
 typedef struct Trie {
@@ -83,6 +100,10 @@ static inline List *trie_find(Trie *trie, const u8 *key) {
   }
 
   return node->data;
+}
+
+static inline void trie_shrink(Trie *trie) {
+  trie_node_shrink(trie->root);
 }
 
 /// @brief Delete key from trie.
