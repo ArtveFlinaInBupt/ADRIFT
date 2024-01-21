@@ -2,7 +2,6 @@
 #include "protocol/cache.h"
 #include "protocol/handle.h"
 #include "protocol/protocol.h"
-#include "thread/threadpool.h"
 #include "util/log.h"
 
 #include <arpa/inet.h>
@@ -63,7 +62,7 @@ int read_hosts_file(const char *filename) {
       continue;
 
     char *ip = strtok(line, " \t\r\n");
-    char *domain = strtok(NULL, " \t\r\n");
+    const char *domain = strtok(NULL, " \t\r\n");
     if (!ip || !domain) {
       print_log(FAILURE, "Invalid line in hosts file: %s", line);
       continue;
@@ -149,9 +148,9 @@ int server_init(const Arguments *args) {
   return 0;
 }
 
-int main(int argc, char **argv) {
+int main(const int argc, char **argv) {
   // 处理命令行参数
-  Arguments args = parse_arguments(argc, argv);
+  const Arguments args = parse_arguments(argc, argv);
   if (args.version) {
     print_version();
     return EXIT_SUCCESS;

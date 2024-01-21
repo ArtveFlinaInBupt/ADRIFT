@@ -11,21 +11,21 @@ RwLock rwlock;
 Trie *trie[3] = {NULL, NULL, NULL};
 HashMap *hash_map[3] = {NULL, NULL, NULL};
 
-void cache_ctor(CacheType cache_type) {
+void cache_ctor(const CacheType cache_type) {
   trie[cache_type] = trie_ctor();
   hash_map[cache_type] = hash_map_ctor();
 
   rwlock_ctor(&rwlock);
 }
 
-void cache_dtor(CacheType cache_type) {
+void cache_dtor(const CacheType cache_type) {
   rwlock_dtor(&rwlock);
 
   hash_map_dtor(&hash_map[cache_type]);
   trie_dtor(&trie[cache_type]);
 }
 
-void cache_insert(CacheType cache_type, const u8 *key, ListNode *node) {
+void cache_insert(const CacheType cache_type, const u8 *key, ListNode *node) {
   for (const u8 *key_ = key; *key_ != '\0'; ++key_)
     if (*key - 33 < 0 || *key - 33 > 94) {
       debug(2, "Cache insert: [invalid key]", (char *)(key));

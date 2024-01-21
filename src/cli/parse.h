@@ -22,6 +22,6 @@ Arguments default_arguments(void);
 
 Arguments parse_arguments(int argc, char **argv);
 
-void dump_arguments(Arguments *args);
+void dump_arguments(const Arguments *args);
 
 #endif // ADRIFT_CLI_PARSE_H

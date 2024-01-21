@@ -19,7 +19,7 @@ typedef int64_t i64;
 typedef float f32;
 typedef double f64;
 
-static inline u32 min_u32(u32 a, u32 b) {
+static inline u32 min_u32(const u32 a, const u32 b) {
   return a < b ? a : b;
 }
 
@@ -35,7 +35,7 @@ static inline void stream_copy(u8 *dst, const u8 *src) {
     *dst++ = *src++;
 }
 
-static inline int stream_compare(u8 *dst, const u8 *src) {
+static inline int stream_compare(const u8 *dst, const u8 *src) {
   while (*dst != '\0' && *src != '\0') {
     if (*dst != *src)
       return *dst - *src;

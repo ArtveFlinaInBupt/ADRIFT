@@ -13,11 +13,11 @@ FILE *log_file_ptr = NULL;
     }                                             \
   } while (0)
 
-void set_debug_level(i32 level) {
+void set_debug_level(const i32 level) {
   debug_level = level;
 }
 
-void print_log(Success success, const char *restrict format, ...) {
+void print_log(const Success success, const char *restrict format, ...) {
   char buf[512 | 1];
   va_list args;
   va_start(args, format);
@@ -48,7 +48,7 @@ void set_log_file(const char *filename) {
   }
 }
 
-void debug(int level, const char *restrict format, ...) {
+void debug(const int level, const char *restrict format, ...) {
   if (level > debug_level)
     return;
 

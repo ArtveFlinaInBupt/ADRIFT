@@ -5,13 +5,9 @@
 
 #  include "ds/list.h"
 #  include "handle.h"
-#  include "protocol/cache.h"
-#  include "thread/threadpool.h"
-#  include "util/log.h"
 
 #  include <arpa/inet.h>
 #  include <dispatch/dispatch.h>
-#  include <pthread.h>
 
 #  define BUFFER_LEN 2048
 #  define MAP_LEN    (0xffff + 2) // 0x10001
@@ -39,9 +35,13 @@ typedef struct ThreadArg {
   ssize_t recv_len;
 } ThreadArg;
 
-int handle_read_cache(ThreadArg *arg, DnsHeader *header, DnsQuestion *question);
+int handle_read_cache(
+    ThreadArg *arg, const DnsHeader *header, DnsQuestion *question
+);
 
-int handle_send_query(ThreadArg *arg, DnsHeader *header, DnsQuestion *question);
+int handle_send_query(
+    const ThreadArg *arg, DnsHeader *header, DnsQuestion *question
+);
 
 int handle_receive_query(ThreadArg *arg, u8 *buf, DnsHeader *header);
 

@@ -16,7 +16,7 @@ size_t get_qname_length(const u8 *buf) {
 }
 
 void parse_qname(u8 **buf, u8 **output) {
-  size_t len = get_qname_length(*buf);
+  const size_t len = get_qname_length(*buf);
   *output = malloc(len);
   u8 *p = *output;
   u8 l;
@@ -33,9 +33,9 @@ void parse_qname(u8 **buf, u8 **output) {
   (*buf)++;
 }
 
-void dump_name(u8 **buf, u8 *qname) {
+void dump_name(u8 **buf, const u8 *qname) {
   u8 *p = *buf;
-  u8 *q = qname;
+  const u8 *q = qname;
   while (*qname != '\0') {
     u8 len = 0;
     while (*qname != '.' && *qname != '\0') {
@@ -54,7 +54,7 @@ void dump_name(u8 **buf, u8 *qname) {
   *buf = p;
 }
 
-void dump_rdata(u8 **buf, u8 *rdata, u16 rdlength) {
+void dump_rdata(u8 **buf, const u8 *rdata, const u16 rdlength) {
   memcpy(*buf, rdata, rdlength);
   *buf += rdlength;
 }
@@ -84,7 +84,7 @@ void dump_header(u8 **buf, DnsHeader header) {
   *buf += sizeof(DnsHeader);
 }
 
-DnsHeader get_error_header(int rcode) {
+DnsHeader get_error_header(const int rcode) {
   DnsHeader header = {
       .id = 0,
       .qr = 1,
@@ -108,7 +108,7 @@ DnsHeader get_error_header(int rcode) {
 }
 
 DnsHeader get_default_header(void) {
-  DnsHeader header = {
+  const DnsHeader header = {
       .id = 0,
       .qr = 1,
       .opcode = 0,
@@ -152,7 +152,7 @@ void dump_question(u8 **buf, DnsQuestion *question) {
   *buf += 2;
 }
 
-void destroy_question(DnsQuestion *question) {
+void destroy_question(const DnsQuestion *question) {
   free(question->qname);
 }
 
@@ -242,7 +242,7 @@ void dump_error_authority(u8 **buf, DnsQuestion *question) {
   destroy_resource_record(&record);
 }
 
-void destroy_resource_record(DnsResourceRecord *record) {
+void destroy_resource_record(const DnsResourceRecord *record) {
   free(record->name);
   free(record->rdata);
 }

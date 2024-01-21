@@ -74,7 +74,7 @@ Arguments parse_arguments(int argc, char **argv) {
   return args;
 }
 
-void dump_arguments(Arguments *args) {
+void dump_arguments(const Arguments *args) {
   debug(1, "Arguments:");
   debug(1, "  hosts_file: %s", args->hosts_file);
   debug(1, "  debug_level: %d", args->debug_level);

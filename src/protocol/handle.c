@@ -6,6 +6,7 @@
 #include "util/log.h"
 
 #include <arpa/inet.h>
+#include <assert.h>
 #include <dispatch/dispatch.h>
 #include <pthread.h>
 
@@ -27,7 +28,7 @@ typedef struct TimerContext {
 } TimerContext;
 
 void timer_handler(void *context) {
-  TimerContext *timerContext = (TimerContext *)context;
+  const TimerContext *timerContext = (TimerContext *)context;
   print_log(FAILURE, "Time out id = %d", timerContext->buf_id);
 #ifdef __APPLE__
   dispatch_semaphore_signal(convert_table[timerContext->buf_id].sem);
@@ -37,7 +38,7 @@ void timer_handler(void *context) {
 }
 
 int handle_read_cache(
-    ThreadArg *arg, DnsHeader *header, DnsQuestion *question
+    ThreadArg *arg, const DnsHeader *header, DnsQuestion *question
 ) {
   /// 查找 cache，删除过期 cache，向下游发包
   List *list = NULL;
@@ -58,7 +59,7 @@ int handle_read_cache(
   header_downstream.id = header->id;
   header_downstream.qr = 1;
   header_downstream.qdcount = 1;
-  for (ListNode *p = list->head; p != NULL; p = p->next) {
+  for (const ListNode *p = list->head; p != NULL; p = p->next) {
     switch (p->type) {
       case ANSWER:
         ++header_downstream.ancount;
@@ -75,7 +76,7 @@ int handle_read_cache(
   // 特判 0.0.0.0（从 dns-relay.txt / hosts 中读取）项并直接返回错误
   if (header_downstream.ancount != 0 || header_downstream.nscount != 0
       || header_downstream.arcount != 0) {
-    for (ListNode *p = list->head; p != NULL; p = p->next) {
+    for (const ListNode *p = list->head; p != NULL; p = p->next) {
       if (p->data == NULL)
         continue;
 
@@ -122,10 +123,10 @@ int handle_read_cache(
   dump_question(&buf_downstream, question);
 
   if (question->qtype == 1) { // A
-    List *list_cname = cache_find(CACHE_TYPE_CNAME, question->qname);
+    const List *list_cname = cache_find(CACHE_TYPE_CNAME, question->qname);
 
     if (list_cname != NULL) {
-      for (ListNode *p = list_cname->head; p != NULL; p = p->next) {
+      for (const ListNode *p = list_cname->head; p != NULL; p = p->next) {
         if (p->data == NULL)
           continue;
 
@@ -139,7 +140,7 @@ int handle_read_cache(
     }
   }
 
-  for (ListNode *p = list->head; p != NULL; p = p->next) {
+  for (const ListNode *p = list->head; p != NULL; p = p->next) {
     if (p->data == NULL)
       continue;
 
@@ -178,10 +179,10 @@ int handle_read_cache(
 }
 
 int handle_send_query(
-    ThreadArg *arg, DnsHeader *header, DnsQuestion *question
+    const ThreadArg *arg, DnsHeader *header, DnsQuestion *question
 ) {
   /// 写转换表
-  u16 req_id = header->id;
+  const u16 req_id = header->id;
   convert_table[buf1_len].buf_req_id = req_id;
   convert_table[buf1_len].buf_sock = arg->client_addr;
   if (buf1_len >= MAP_LEN) {
@@ -212,7 +213,7 @@ int handle_send_query(
 
   /// 创建定时器 dispatch timer
   debug(2, "Start timer for query id %d", header->id);
-  dispatch_queue_t queue
+  const dispatch_queue_t queue
       = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
   dispatch_source_t timer
       = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, queue);
@@ -225,8 +226,8 @@ int handle_send_query(
   dispatch_set_context(timer, timerContext);
   dispatch_set_finalizer_f(timer, free);
 
-  i64 interval = DEFAULT_TIMEOUT;
-  dispatch_time_t start_time = dispatch_time(DISPATCH_TIME_NOW, interval);
+  const i64 interval = DEFAULT_TIMEOUT;
+  const dispatch_time_t start_time = dispatch_time(DISPATCH_TIME_NOW, interval);
   dispatch_source_set_timer(timer, start_time, interval, 0);
   dispatch_source_set_event_handler_f(timer, timer_handler);
   dispatch_resume(timer);
@@ -253,7 +254,7 @@ int handle_receive_query(ThreadArg *arg, u8 *buf, DnsHeader *header) {
     u8 buf_downstream_[BUFFER_LEN];
     u8 *buf_downstream = buf_downstream_;
 
-    DnsHeader header_nxdomain = get_error_header(1);
+    const DnsHeader header_nxdomain = get_error_header(1);
     dump_header(&buf_downstream, header_nxdomain);
 
     sendto(
@@ -288,7 +289,7 @@ int handle_receive_query(ThreadArg *arg, u8 *buf, DnsHeader *header) {
 }
 
 int handle_send_response(
-    u16 req_id, DnsHeader *header, DnsQuestion *question,
+    const u16 req_id, DnsHeader *header, DnsQuestion *question,
     DnsResourceRecord **answer, DnsResourceRecord **authority,
     DnsResourceRecord **additional
 ) {
@@ -382,9 +383,10 @@ int handle_receive_response(ThreadArg *arg, u8 *buf, DnsHeader *header) {
 
   /// 写 cache
   if (header->rcode == NO_ERROR) {
-    time_t cur_time = time(NULL);
+    const time_t cur_time = time(NULL);
 
     for (int i = 0; i < header->ancount; i++) {
+      assert(answer[i] != NULL);
       ListNode *node = list_node_ctor_with_info(
           answer[i], ANSWER, cur_time, min_u32(180, answer[i]->ttl)
       );
@@ -398,6 +400,7 @@ int handle_receive_response(ThreadArg *arg, u8 *buf, DnsHeader *header) {
     }
 
     for (int i = 0; i < header->nscount; i++) {
+      assert(authority[i] != NULL);
       ListNode *node = list_node_ctor_with_info(
           authority[i], AUTHORITY, cur_time, min_u32(180, authority[i]->ttl)
       );
@@ -411,6 +414,7 @@ int handle_receive_response(ThreadArg *arg, u8 *buf, DnsHeader *header) {
     }
 
     for (int i = 0; i < header->arcount; i++) {
+      assert(additional[i] != NULL);
       ListNode *node = list_node_ctor_with_info(
           additional[i], ADDITIONAL, cur_time, min_u32(180, additional[i]->ttl)
       );

@@ -79,7 +79,7 @@ void parse_question(u8 **buf, DnsQuestion *question);
 
 void dump_question(u8 **buf, DnsQuestion *question);
 
-void destroy_question(DnsQuestion *question);
+void destroy_question(const DnsQuestion *question);
 
 void parse_resource_record(u8 **buf, u8 *name_buf, DnsResourceRecord *record);
 
@@ -87,6 +87,6 @@ void dump_resource_record(u8 **buf, DnsResourceRecord *record);
 
 void dump_error_authority(u8 **buf, DnsQuestion *question);
 
-void destroy_resource_record(DnsResourceRecord *record);
+void destroy_resource_record(const DnsResourceRecord *record);
 
 #endif // ADRIFT_PROTOCOL_H
