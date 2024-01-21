@@ -40,10 +40,10 @@ void cache_insert(CacheType cache_type, const u8 *key, ListNode *node) {
     hash_map_insert(hash_map[cache_type], key, node);
   }
 
-//  if (rand() % 500 < 1) { // NOLINT(cert-msc50-cpp)
-//    trie_shrink(trie[cache_type]);
-//    hash_map_shrink(hash_map[cache_type]);
-//  }
+  // if (rand() % 500 < 1) { // NOLINT(cert-msc50-cpp)
+  //   trie_shrink(trie[cache_type]);
+  //   hash_map_shrink(hash_map[cache_type]);
+  // }
   rwlock_write_unlock(&rwlock);
 }
 

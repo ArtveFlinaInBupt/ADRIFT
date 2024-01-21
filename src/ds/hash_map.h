@@ -115,7 +115,8 @@ static inline List *hash_map_find(HashMap *hash_map, const u8 *key) {
 
 static inline void hash_map_shrink(HashMap *hash_map) {
   for (size_t i = 0; i < hash_map->capacity; ++i) {
-    for (HashMapEntry *entry = hash_map->table[i], *prev = NULL; entry != NULL;) {
+    for (HashMapEntry *entry = hash_map->table[i], *prev = NULL;
+         entry != NULL;) {
       if (list_update(entry->value) != 0) {
         prev = entry;
         entry = entry->next;

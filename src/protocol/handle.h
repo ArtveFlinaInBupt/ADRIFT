@@ -6,33 +6,32 @@
 #  include "ds/list.h"
 #  include "handle.h"
 #  include "protocol/cache.h"
+#  include "thread/threadpool.h"
 #  include "util/log.h"
 
 #  include <arpa/inet.h>
 #  include <dispatch/dispatch.h>
 #  include <pthread.h>
-#include "thread/threadpool.h"
-
 
 #  define BUFFER_LEN 2048
 #  define MAP_LEN    (0xffff + 2) // 0x10001
 
-int server_fd;
-struct sockaddr_in server_addr;
+extern int server_fd;
+extern struct sockaddr_in server_addr;
 extern struct sockaddr_in dns_addr;
 
 typedef struct Convert {
   uint16_t buf_req_id;
   struct sockaddr_in buf_sock;
-#ifdef __APPLE__
+#  ifdef __APPLE__
   dispatch_semaphore_t sem;
-#else // elseifdef __linux__
+#  else // elseifdef __linux__
   sem_t sem;
-#endif
+#  endif
   uint8_t valid;
 } Convert;
 
-Convert convert_table[MAP_LEN];
+extern Convert convert_table[MAP_LEN];
 
 typedef struct ThreadArg {
   uint8_t buf[BUFFER_LEN];

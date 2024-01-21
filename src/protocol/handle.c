@@ -9,10 +9,16 @@
 #include <dispatch/dispatch.h>
 #include <pthread.h>
 
-struct sockaddr_in dns_addr
-    = {.sin_family = AF_INET,
-       .sin_port = htons(53),
-       .sin_addr.s_addr = 0x2c09030a};
+int server_fd = 0;
+
+struct sockaddr_in server_addr
+    = {.sin_family = AF_INET, .sin_port = htons(53), .sin_addr.s_addr = 0};
+
+struct sockaddr_in dns_addr = {
+    .sin_family = AF_INET, .sin_port = htons(53), .sin_addr.s_addr = 0x2c09030a
+};
+
+Convert convert_table[MAP_LEN];
 
 int buf1_len = 1;
 
@@ -105,7 +111,8 @@ int handle_read_cache(
     }
   }
 
-  if (!header_downstream.ancount && !header_downstream.nscount && !header_downstream.arcount)
+  if (!header_downstream.ancount && !header_downstream.nscount
+      && !header_downstream.arcount)
     return 0;
 
   // 缓存中有其他值（不为 0.0.0.0）
@@ -153,9 +160,19 @@ int handle_read_cache(
       sizeof(arg->client_addr)
   );
   print_log(
-      SUCCESS, "Sent cached response id = %d, to client %s:%d", header_downstream.id, inet_ntoa(arg->client_addr.sin_addr), ntohs(arg->client_addr.sin_port)
+      SUCCESS,
+      "Sent cached response id = %d, to client %s:%d",
+      header_downstream.id,
+      inet_ntoa(arg->client_addr.sin_addr),
+      ntohs(arg->client_addr.sin_port)
   );
-  debug(2, "Cached response header ancount %d nscount %d arcount %d", header_downstream.ancount, header_downstream.nscount, header_downstream.arcount);
+  debug(
+      2,
+      "Cached response header ancount %d nscount %d arcount %d",
+      header_downstream.ancount,
+      header_downstream.nscount,
+      header_downstream.arcount
+  );
 
   return 1;
 }
@@ -301,9 +318,13 @@ int handle_send_response(
       sizeof(convert_table[req_id].buf_sock)
   );
 
-  print_log(SUCCESS, "Sent response id = %d to client %s:%d", req_id, inet_ntoa(
-      convert_table[req_id].buf_sock.sin_addr
-  ), ntohs(convert_table[req_id].buf_sock.sin_port));
+  print_log(
+      SUCCESS,
+      "Sent response id = %d to client %s:%d",
+      req_id,
+      inet_ntoa(convert_table[req_id].buf_sock.sin_addr),
+      ntohs(convert_table[req_id].buf_sock.sin_port)
+  );
 
   return 1;
 }

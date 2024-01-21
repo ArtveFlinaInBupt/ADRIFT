@@ -128,7 +128,7 @@ InsertNewlineAtEOF: true                 # Modified
 InsertTrailingCommas: None               # Opinion reserved
 IntegerLiteralSeparator:
   Binary:          0
-  Decimal:         3
+  Decimal:         0
   Hex:             0
 JavaScriptQuotes: Leave                  # Opinion reserved
 JavaScriptWrapImports: true
